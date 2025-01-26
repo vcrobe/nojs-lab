@@ -1,0 +1,5 @@
+# Ignore VSCode configuration files
+.vscode
+
+# Ignore all .wasm files
+*.wasm
