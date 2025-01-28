@@ -38,9 +38,16 @@ func showPrompt() {
 	}
 }
 
+func callJsFunction() {
+	js.Global().Call("calledFromGoWasm", "Hello from Go!")
+}
+
 func main() {
 	// Export the `add` function to JavaScript
 	js.Global().Set("add", js.FuncOf(add))
+
+	// Call the JavaScript function
+	callJsFunction()
 
 	// Keep the Go program running
 	select {}
