@@ -75,6 +75,18 @@ func createElement(n *VNode) js.Value {
 			}
 		}
 		return el
+	case "input":
+		el := doc.Call("createElement", "input")
+		if n.Attributes != nil {
+			for k, v := range n.Attributes {
+				el.Call("setAttribute", k, v)
+			}
+		}
+		// For text input, set value if provided in Content
+		if n.Content != "" {
+			el.Set("value", n.Content)
+		}
+		return el
 	case "button":
 		el := doc.Call("createElement", "button")
 		if n.Attributes != nil {

@@ -40,6 +40,16 @@ func Paragraph(text string, attrs map[string]any) *VNode {
 	return NewVNode("p", attrs, nil, text)
 }
 
+// InputText returns a VNode representing an <input type="text"> element.
+// Optionally accepts a map of attributes (e.g., {"placeholder": "Type here"}).
+func InputText(attrs map[string]any) *VNode {
+	if attrs == nil {
+		attrs = make(map[string]any)
+	}
+	attrs["type"] = "text"
+	return NewVNode("input", attrs, nil, "")
+}
+
 // Div creates a <div> VNode with the given children and allows passing attributes.
 func Div(attrs map[string]any, children ...*VNode) *VNode {
 	return NewVNode("div", attrs, children, "")

@@ -4,55 +4,16 @@
 package main
 
 import (
-	"syscall/js"
-
-	"github.com/vcrobe/nojs/dialogs"
 	"github.com/vcrobe/nojs/vdom"
 )
 
-func add(this js.Value, args []js.Value) interface{} {
-	a := args[0].Int()
-	b := args[1].Int()
-	return js.ValueOf(a + b)
-}
-
-func showPrompt() {
-	name := dialogs.Prompt("write your name")
-
-	if name == "<null>" {
-		println("you pressed the cancel button")
-	} else if name == "" {
-		println("the string is empty")
-	} else {
-		println("your name is", name)
-	}
-}
-
-func callJsFunction() {
-	js.Global().Call("calledFromGoWasm", "Hello from Go!")
-}
-
-func testButtonClick() {
-	println("Button was clicked!")
-}
-
 func main() {
-	// Export the `add` function to JavaScript
-	js.Global().Set("add", js.FuncOf(add))
+	// Create and render the test component
+	testComp1 := NewTestComponent("First component", 1)
+	vdom.RenderToSelector("#app", testComp1.Render())
 
-	// Call the JavaScript function
-	callJsFunction()
-
-	div := vdom.Div(map[string]any{"id": "test-div", "data-attr": -1.3},
-		vdom.Paragraph("Paragraph with attributes", map[string]any{"id": "test-paragraph"}),
-		vdom.Div(nil,
-			vdom.Paragraph("Simple paragraph tag", nil),
-		),
-		vdom.Button("Click me", map[string]any{
-			"onClick": func() { testButtonClick() },
-		}, nil),
-	)
-	vdom.RenderToSelector("#app", div)
+	testComp2 := NewTestComponent("Second component", 8)
+	vdom.RenderToSelector("#app", testComp2.Render())
 
 	// Keep the Go program running
 	select {}
