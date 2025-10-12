@@ -3,3 +3,9 @@
 
 # Ignore all .wasm files
 *.wasm
+
+# Ignore the file generated.go in any directory
+/**/generated.go
+
+# Ignore all .gt.html files in any directory
+/**/*.gt.html

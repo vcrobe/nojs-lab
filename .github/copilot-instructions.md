@@ -9,9 +9,9 @@ Purpose: Help AI agents work productively in this Go + WebAssembly (WASM) framew
   - **Go + WASM**: Go code compiles to WASM binary for browser execution via syscall/js
   - **Component Model**: Reusable UI building blocks combining Go structs (logic/state) with HTML templates (structure)
   - **Virtual DOM**: In-memory DOM representation with efficient diff/patch cycles to minimize real DOM operations
-  - **AOT Compilation**: Ahead-of-Time template parsing that auto-generates Render() methods from HTML templates
+  - **AOT Compilation**: Ahead-of-Time template parsing that auto-generates Render() methods from HTML templates *(currently in development)*
 
-- Current state: Basic WASM interop established with minimal VDOM scaffold (`vdom/`, `component/`) supporting `<p>`, `<button>`, `<div>` and `<input>` elements.
+- Current state: Basic WASM interop established with minimal VDOM scaffold (`vdom/`, `component/`) supporting `<p>`, `<button>`, `<div>` and `<input>` elements. AOT compiler development is underway.
 
 Key files
 - `main.go`: WASM entrypoint. Exports Go functions, calls into JS, then blocks with `select {}` to keep runtime alive.
@@ -23,16 +23,16 @@ Key files
 - `component/component.go`: Component interface defining `Render() *vdom.VNode` for UI building blocks.
 - `index.html`: static HTML shell for the application.
 
-Future architecture (per blueprint):
-- `compiler/`: AOT template parser and code generator for HTML-to-Go Render() methods
-- `core/`: framework engine with component lifecycle, scheduling, and update management
-- `router/`: SPA routing logic for single-page application navigation
-- `stdlib/`: standard library of built-in components
+Current architecture development:
+- `compiler/`: AOT template parser and code generator for HTML-to-Go Render() methods *(in development)*
+- `core/`: framework engine with component lifecycle, scheduling, and update management *(planned)*
+- `router/`: SPA routing logic for single-page application navigation *(planned)*
+- `stdlib/`: standard library of built-in components *(planned)*
 
 The framework roadmap follows three key phases:
-1. **WASM Hello World**: Basic Go-to-WASM interop with DOM manipulation
-2. **Basic VDOM**: Manual VNode creation with simple rendering (current state)
-3. **AOT Compiler**: HTML template parsing and automatic Render() method generation
+1. **WASM Hello World**: Basic Go-to-WASM interop with DOM manipulation *(completed)*
+2. **Basic VDOM**: Manual VNode creation with simple rendering *(completed)*
+3. **AOT Compiler**: HTML template parsing and automatic Render() method generation *(in active development)*
 
 ## Build and run (local dev)
 - Build wasm at repo root:
@@ -84,8 +84,8 @@ func (c *Counter) Render() *vdom.VNode {
 
 This minimizes expensive DOM operations and maximizes performance.
 
-### Template Compilation (Future)
-HTML templates will be compiled Ahead-of-Time (AOT):
+### Template Compilation (In Development)
+HTML templates are being developed for Ahead-of-Time (AOT) compilation:
 - Parse `*.component.html` files with Go template syntax
 - Generate corresponding `Render()` methods automatically  
 - Support event binding (`go-on:click`) and data binding (`{c.count}`)
@@ -112,7 +112,6 @@ Notes
   - Call JS from Go via `js.Global().Call("fnName", args...)` (see `calledFromGoWasm`).
   - Keep Go alive with `select {}` at end of `main()`.
 - Browser API wrappers: Prefer packages `console`, `dialogs`, `sessionStorage` over raw `syscall/js` in app code.
-- HTML partials: Loaded into `#header`, `#content`, `#footer` with `loadComponent()`; keep paths relative to repo root when serving.
 - VDOM: `vdom.VNode` has a minimal renderer; no diff/patch logic. Only `<p>` renders; others are ignored for now.
 
 ## Commit message guidelines
