@@ -196,30 +196,15 @@ func compileComponentTemplate(comp componentInfo, componentMap map[string]compon
 	if bodyNode == nil {
 		return fmt.Errorf("could not find <body> tag")
 	}
-	// Collect all top-level element children inside <body>
-	var topLevelElems []*html.Node
-	for c := bodyNode.FirstChild; c != nil; c = c.NextSibling {
-		if c.Type == html.ElementNode {
-			topLevelElems = append(topLevelElems, c)
-		}
-	}
-	if len(topLevelElems) == 0 {
+
+	rootElement := findFirstElementChild(bodyNode)
+	if rootElement == nil {
 		return fmt.Errorf("no element found inside <body> tag to compile")
 	}
 
-	// Generate code for either a single root node or wrap multiple in a <div>
+	// Generate code for a single root node
 	var generatedCode string
-	if len(topLevelElems) == 1 {
-		generatedCode = generateNodeCode(topLevelElems[0], "c", componentMap, comp, htmlString)
-	} else {
-		var childrenCodes []string
-		for _, el := range topLevelElems {
-			if code := generateNodeCode(el, "c", componentMap, comp, htmlString); code != "" {
-				childrenCodes = append(childrenCodes, code)
-			}
-		}
-		generatedCode = fmt.Sprintf("vdom.Div(nil, %s)", strings.Join(childrenCodes, ", "))
-	}
+	generatedCode = generateNodeCode(rootElement, "c", componentMap, comp, htmlString)
 
 	template := `//go:build js || wasm
 // +build js wasm
