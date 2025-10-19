@@ -40,6 +40,38 @@ type componentInfo struct {
 // Regex to find data binding expressions like {FieldName}
 var dataBindingRegex = regexp.MustCompile(`\{([a-zA-Z0-9_]+)\}`)
 
+// Regex to find ternary expressions like { condition ? 'value1' : 'value2' }
+var ternaryExprRegex = regexp.MustCompile(`\{\s*(!?)([a-zA-Z0-9_]+)\s*\?\s*'([^']*)'\s*:\s*'([^']*)'\s*\}`)
+
+// Regex to find boolean shorthand like {condition} or {!condition}
+var booleanShorthandRegex = regexp.MustCompile(`^\{\s*(!?)([a-zA-Z0-9_]+)\s*\}$`)
+
+// Standard HTML boolean attributes
+var standardBooleanAttrs = map[string]bool{
+	"disabled":       true,
+	"checked":        true,
+	"readonly":       true,
+	"required":       true,
+	"autofocus":      true,
+	"autoplay":       true,
+	"controls":       true,
+	"loop":           true,
+	"muted":          true,
+	"selected":       true,
+	"hidden":         true,
+	"multiple":       true,
+	"novalidate":     true,
+	"open":           true,
+	"reversed":       true,
+	"scoped":         true,
+	"seamless":       true,
+	"sortable":       true,
+	"truespeed":      true,
+	"default":        true,
+	"ismap":          true,
+	"formnovalidate": true,
+}
+
 // preprocessConditionals preprocesses template source to extract conditional blocks and replace them with placeholder nodes.
 // It validates that every {@if} has a matching {@endif}.
 func preprocessConditionals(src string, templatePath string) (string, error) {
@@ -99,6 +131,57 @@ func preprocessConditionals(src string, templatePath string) (string, error) {
 	// {@endif} closes the last opened branch and the wrapper
 	src = reEndIf.ReplaceAllString(src, "</go-if></go-elseif></go-else></go-conditional>")
 	return src, nil
+}
+
+// estimateLineNumber tries to find the approximate line number where text appears in HTML source.
+func estimateLineNumber(htmlSource, text string) int {
+	lines := strings.Split(htmlSource, "\n")
+	for i, line := range lines {
+		if strings.Contains(line, text) {
+			return i + 1 // Line numbers are 1-indexed
+		}
+	}
+	return 1 // Default to line 1 if not found
+}
+
+// isBooleanAttribute checks if an attribute name is a standard HTML boolean attribute.
+func isBooleanAttribute(attrName string) bool {
+	return standardBooleanAttrs[attrName]
+}
+
+// validateBooleanCondition validates that a condition references a boolean field on the component.
+// Returns the propertyDescriptor if valid, or exits with a compile error.
+func validateBooleanCondition(condition string, comp componentInfo, templatePath string, lineNumber int, htmlSource string) propertyDescriptor {
+	propDesc, exists := comp.Schema.Props[strings.ToLower(condition)]
+	if !exists {
+		contextLines := getContextLines(htmlSource, lineNumber, 2)
+		availableFields := strings.Join(getAvailableFieldNames(comp.Schema.Props), ", ")
+		fmt.Fprintf(os.Stderr, "Compilation Error in %s:%d: Condition '%s' not found on component '%s'. Available fields: [%s]\n%s",
+			templatePath, lineNumber, condition, comp.PascalName, availableFields, contextLines)
+		os.Exit(1)
+	}
+	if propDesc.GoType != "bool" {
+		contextLines := getContextLines(htmlSource, lineNumber, 2)
+		fmt.Fprintf(os.Stderr, "Compilation Error in %s:%d: Condition '%s' must be a bool field, found type '%s'.\n%s",
+			templatePath, lineNumber, condition, propDesc.GoType, contextLines)
+		os.Exit(1)
+	}
+	return propDesc
+}
+
+// generateTernaryExpression generates Go code for a ternary conditional expression.
+// Supports negation operator: if negated is true, inverts the condition.
+func generateTernaryExpression(negated bool, condition, trueVal, falseVal, receiver string, propDesc propertyDescriptor) string {
+	if negated {
+		// Swap true and false values for negation
+		trueVal, falseVal = falseVal, trueVal
+	}
+	return fmt.Sprintf(`func() string {
+		if %s.%s {
+			return %s
+		}
+		return %s
+	}()`, receiver, propDesc.Name, strconv.Quote(trueVal), strconv.Quote(falseVal))
 }
 
 // Compile is the main entry point for the AOT compiler.
@@ -311,8 +394,8 @@ func (c *%[1]s) Render(r *runtime.Renderer) *vdom.VNode {
 func generateAttributesMap(n *html.Node, receiver string, currentComp componentInfo, htmlSource string) string {
 	var attrs, events []string
 	for _, a := range n.Attr {
-		if strings.HasPrefix(a.Key, "@") {
-			eventName := strings.TrimPrefix(a.Key, "@")
+		if after, ok := strings.CutPrefix(a.Key, "@"); ok {
+			eventName := after
 			handlerName := a.Val
 			// Compile-time safety check!
 			if _, ok := currentComp.Schema.Methods[handlerName]; !ok {
@@ -327,13 +410,88 @@ func generateAttributesMap(n *html.Node, receiver string, currentComp componentI
 			switch eventName {
 			case "onclick":
 				// Generate the Go code to reference the component's method.
-				//events = append(events, fmt.Sprintf(`"onClick": %s.%s`, receiver, handlerName))
 				handler := fmt.Sprintf(`%s.%s`, receiver, handlerName)
 				events = append(events, fmt.Sprintf(`"onClick": %s`, handler))
 			default:
 				fmt.Printf("Warning: Unknown event directive '@%s' in %s.\n", eventName, currentComp.Path)
 			}
 		} else {
+			// Check for inline conditional expressions in attribute values
+			attrValue := a.Val
+			lineNum := estimateLineNumber(htmlSource, fmt.Sprintf(`%s="%s"`, a.Key, attrValue))
+
+			// Pattern 1: Boolean attribute shorthand {condition} or {!condition}
+			if match := booleanShorthandRegex.FindStringSubmatch(attrValue); match != nil {
+				negated := match[1] == "!"
+				condition := match[2]
+
+				// Only allow boolean shorthand for standard boolean attributes
+				if !isBooleanAttribute(a.Key) {
+					contextLines := getContextLines(htmlSource, lineNum, 2)
+					fmt.Fprintf(os.Stderr, "Compilation Error in %s:%d: Boolean shorthand syntax can only be used with standard HTML boolean attributes. For attribute '%s', use the full ternary expression: {%s ? 'true' : 'false'}\n%s",
+						currentComp.Path, lineNum, a.Key, condition, contextLines)
+					os.Exit(1)
+				}
+
+				// Validate condition is a boolean field
+				propDesc := validateBooleanCondition(condition, currentComp, currentComp.Path, lineNum, htmlSource)
+
+				// Generate conditional code: if negated, invert the condition
+				if negated {
+					attrs = append(attrs, fmt.Sprintf(`"%s": !%s.%s`, a.Key, receiver, propDesc.Name))
+				} else {
+					attrs = append(attrs, fmt.Sprintf(`"%s": %s.%s`, a.Key, receiver, propDesc.Name))
+				}
+				continue
+			}
+
+			// Pattern 2: Ternary expressions in attribute values
+			if ternaryExprRegex.MatchString(attrValue) {
+				// Replace all ternary expressions in the value
+				result := attrValue
+				ternaryMatches := ternaryExprRegex.FindAllStringSubmatch(attrValue, -1)
+
+				for _, match := range ternaryMatches {
+					fullMatch := match[0]
+					negated := match[1] == "!"
+					condition := match[2]
+					trueVal := match[3]
+					falseVal := match[4]
+
+					// Validate condition is a boolean field
+					propDesc := validateBooleanCondition(condition, currentComp, currentComp.Path, lineNum, htmlSource)
+
+					// Generate ternary expression
+					ternaryCode := generateTernaryExpression(negated, condition, trueVal, falseVal, receiver, propDesc)
+
+					// If the attribute value is only the ternary expression
+					if result == fullMatch {
+						attrs = append(attrs, fmt.Sprintf(`"%s": %s`, a.Key, ternaryCode))
+						result = ""
+						break
+					}
+
+					// Otherwise, replace in the string (for concatenation)
+					result = strings.Replace(result, fullMatch, "%s", 1)
+				}
+
+				// If there were other parts, wrap in fmt.Sprintf
+				if result != "" {
+					var args []string
+					for _, match := range ternaryMatches {
+						negated := match[1] == "!"
+						condition := match[2]
+						trueVal := match[3]
+						falseVal := match[4]
+						propDesc := validateBooleanCondition(condition, currentComp, currentComp.Path, lineNum, htmlSource)
+						args = append(args, generateTernaryExpression(negated, condition, trueVal, falseVal, receiver, propDesc))
+					}
+					attrs = append(attrs, fmt.Sprintf(`"%s": fmt.Sprintf(%s, %s)`, a.Key, strconv.Quote(result), strings.Join(args, ", ")))
+				}
+				continue
+			}
+
+			// Pattern 3: Regular static attribute
 			attrs = append(attrs, fmt.Sprintf(`"%s": "%s"`, a.Key, a.Val))
 		}
 	}
@@ -346,7 +504,51 @@ func generateAttributesMap(n *html.Node, receiver string, currentComp componentI
 }
 
 // generateTextExpression handles data binding in text nodes.
-func generateTextExpression(text string, receiver string, currentComp componentInfo) string {
+func generateTextExpression(text string, receiver string, currentComp componentInfo, htmlSource string, lineNumber int) string {
+	// Check for ternary expressions first
+	ternaryMatches := ternaryExprRegex.FindAllStringSubmatch(text, -1)
+
+	if len(ternaryMatches) > 0 {
+		// Handle ternary expressions
+		result := text
+
+		for _, match := range ternaryMatches {
+			fullMatch := match[0]
+			negated := match[1] == "!"
+			condition := match[2]
+			trueVal := match[3]
+			falseVal := match[4]
+
+			// Validate condition is a boolean field
+			propDesc := validateBooleanCondition(condition, currentComp, currentComp.Path, lineNumber, htmlSource)
+
+			// Generate ternary expression
+			ternaryCode := generateTernaryExpression(negated, condition, trueVal, falseVal, receiver, propDesc)
+
+			// If the text contains only the ternary expression, return it directly
+			if result == fullMatch {
+				return ternaryCode
+			}
+
+			// Otherwise, replace the match with a placeholder for fmt.Sprintf
+			result = strings.Replace(result, fullMatch, "%s", 1)
+		}
+
+		// If there are other parts of the text, wrap in fmt.Sprintf
+		var args []string
+		for _, match := range ternaryMatches {
+			negated := match[1] == "!"
+			condition := match[2]
+			trueVal := match[3]
+			falseVal := match[4]
+			propDesc := validateBooleanCondition(condition, currentComp, currentComp.Path, lineNumber, htmlSource)
+			args = append(args, generateTernaryExpression(negated, condition, trueVal, falseVal, receiver, propDesc))
+		}
+
+		return fmt.Sprintf(`fmt.Sprintf(%s, %s)`, strconv.Quote(result), strings.Join(args, ", "))
+	}
+
+	// Original data binding logic
 	matches := dataBindingRegex.FindAllStringSubmatch(text, -1)
 
 	if len(matches) == 0 {
@@ -528,8 +730,10 @@ func generateNodeCode(n *html.Node, receiver string, componentMap map[string]com
 		case "p", "button":
 			textContent := ""
 			if n.FirstChild != nil && n.FirstChild.Type == html.TextNode {
-				// Handle data binding in the text content
-				textContent = generateTextExpression(n.FirstChild.Data, receiver, currentComp)
+				// Handle data binding and inline conditionals in the text content
+				// Estimate line number by searching for the text in the HTML source
+				lineNum := estimateLineNumber(htmlSource, n.FirstChild.Data)
+				textContent = generateTextExpression(n.FirstChild.Data, receiver, currentComp, htmlSource, lineNum)
 			} else {
 				textContent = `""` // Default to empty string if no text node
 			}

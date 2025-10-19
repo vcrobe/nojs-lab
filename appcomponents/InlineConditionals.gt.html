@@ -1,0 +1,34 @@
+<div style="background-color: darksalmon;">
+    <p>Inline Conditional Expressions Demo</p>
+    
+    <!-- Example 1: Conditional CSS Classes -->
+    <div class="status {HasError ? 'error' : 'success'}">
+        <p>Status: {HasError ? 'Error occurred!' : 'Everything is OK'}</p>
+    </div>
+    
+    <!-- Example 2: Boolean Attribute Shorthand -->
+    <button disabled="{IsSaving}">
+        {IsSaving ? 'Saving...' : 'Save Changes'}
+    </button>
+    
+    <!-- Example 3: Negation Operator -->
+    <button disabled="{!IsReady}">
+        {IsReady ? 'Submit' : 'Please wait...'}
+    </button>
+    
+    <!-- Example 4: Explicit Non-Boolean Attributes -->
+    <button aria-disabled="{IsSaving ? 'true' : 'false'}">
+        Click Me
+    </button>
+    
+    <!-- Example 5: Multiple Conditionals in One Attribute -->
+    <div class="box {IsActive ? 'active' : 'inactive'} {IsLarge ? 'large' : 'small'}">
+        Content here
+    </div>
+    
+    <!-- Example 6: Readonly Input -->
+    <input type="text" readonly="{IsLocked}" />
+    
+    <!-- Example 7: Required Field -->
+    <input type="email" required="{IsRequired}" />
+</div>

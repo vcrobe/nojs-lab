@@ -65,6 +65,22 @@ func RenderTo(mount js.Value, n *VNode) {
 	}
 }
 
+// setAttributeValue sets an attribute on an element, handling boolean attributes correctly.
+func setAttributeValue(el js.Value, key string, value interface{}) {
+	// Handle boolean attributes
+	if boolVal, ok := value.(bool); ok {
+		if boolVal {
+			// For boolean attributes, set them without a value (or with empty string)
+			el.Call("setAttribute", key, "")
+		}
+		// If false, don't set the attribute at all
+		return
+	}
+
+	// For all other types, convert to string and set normally
+	el.Call("setAttribute", key, value)
+}
+
 func createElement(n *VNode) js.Value {
 	doc := js.Global().Get("document")
 	if !doc.Truthy() || n == nil {
@@ -81,7 +97,7 @@ func createElement(n *VNode) js.Value {
 
 		if n.Attributes != nil {
 			for k, v := range n.Attributes {
-				el.Call("setAttribute", k, v)
+				setAttributeValue(el, k, v)
 			}
 		}
 
@@ -92,7 +108,7 @@ func createElement(n *VNode) js.Value {
 
 		if n.Attributes != nil {
 			for k, v := range n.Attributes {
-				el.Call("setAttribute", k, v)
+				setAttributeValue(el, k, v)
 			}
 		}
 
@@ -115,7 +131,7 @@ func createElement(n *VNode) js.Value {
 
 		if n.Attributes != nil {
 			for k, v := range n.Attributes {
-				el.Call("setAttribute", k, v)
+				setAttributeValue(el, k, v)
 			}
 		}
 
@@ -130,7 +146,7 @@ func createElement(n *VNode) js.Value {
 
 		if n.Attributes != nil {
 			for k, v := range n.Attributes {
-				el.Call("setAttribute", k, v)
+				setAttributeValue(el, k, v)
 			}
 		}
 
