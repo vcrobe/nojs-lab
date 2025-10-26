@@ -31,10 +31,10 @@ func (c *UserProfile) OnInit() {
 }
 ```
 
-### 2. Parameter Updates (`OnParametersSet`)
+### 2. Parameter Updates (`OnPropertiesSet`)
 
 - **Interface:** `runtime.ParameterReceiver`
-- **Method:** `OnParametersSet()`
+- **Method:** `OnPropertiesSet()`
 - **When:** Called by the runtime _every time_ the component receives parameters (props) from its parent, _just before_ the `Render` method is called. This includes the initial render.
 - **Purpose:** Allows the component to react to changes in its input properties, for example, by fetching new data if an ID prop has changed.
 
@@ -51,7 +51,7 @@ type DataDisplay struct {
 // Ensure the component implements the ParameterReceiver interface
 var _ runtime.ParameterReceiver = (*DataDisplay)(nil)
 
-func (c *DataDisplay) OnParametersSet() {
+func (c *DataDisplay) OnPropertiesSet() {
     // Manual change detection - only fetch if DataID changed
     if c.DataID != c.prevDataID {
         c.prevDataID = c.DataID
@@ -112,7 +112,7 @@ func (c *TimerComponent) OnDestroy() {
 
 ## Handling Asynchronous Operations
 
-Lifecycle methods like `OnInit` and `OnParametersSet` are **synchronous**. To perform long-running tasks like API calls without blocking the UI, you must launch a goroutine. The `StateHasChanged()` method (provided by embedding `runtime.ComponentBase`) is essential for updating the UI when the async task completes.
+Lifecycle methods like `OnInit` and `OnPropertiesSet` are **synchronous**. To perform long-running tasks like API calls without blocking the UI, you must launch a goroutine. The `StateHasChanged()` method (provided by embedding `runtime.ComponentBase`) is essential for updating the UI when the async task completes.
 
 ### Pattern for Async Data Fetching
 
@@ -188,13 +188,13 @@ For a component instance, the lifecycle methods are called in this order:
 
 1. **Component created** (struct instantiated by parent)
 2. **`OnInit()`** _(only on first render)_
-3. **`OnParametersSet()`** _(on every render, including first)_
+3. **`OnPropertiesSet()`** _(on every render, including first)_
 4. **`Render()`** _(generates VDOM tree)_
 
 On subsequent renders when props change:
 
 1. **Props updated** (via generated `ApplyProps` method)
-2. **`OnParametersSet()`**
+2. **`OnPropertiesSet()`**
 3. **`Render()`**
 
 When a component is unmounted (removed from the tree):
@@ -213,7 +213,7 @@ The framework automatically preserves component instances across renders to main
 
 - The **existing component instance is reused** (preserving state like counters, timers, etc.)
 - New prop values are **applied automatically** via the compiler-generated `ApplyProps` method
-- `OnParametersSet` is called to allow the component to react to prop changes
+- `OnPropertiesSet` is called to allow the component to react to prop changes
 
 **Note:** You don't need to manually implement `ApplyProps` - the compiler generates it automatically for each component based on its exported fields.
 
@@ -318,7 +318,7 @@ Build with the `dev` tag:
 GOOS=js GOARCH=wasm go build -tags=dev -o main.wasm
 ```
 
-**Behavior:** Panics in `OnInit` and `OnParametersSet` propagate immediately, causing the application to crash. This helps you catch bugs during development.
+**Behavior:** Panics in `OnInit` and `OnPropertiesSet` propagate immediately, causing the application to crash. This helps you catch bugs during development.
 
 ### Production Mode
 
@@ -328,18 +328,18 @@ Build without tags:
 GOOS=js GOARCH=wasm go build -o main.wasm
 ```
 
-**Behavior:** Panics in `OnInit` and `OnParametersSet` are recovered and logged to the console, preventing application crashes.
+**Behavior:** Panics in `OnInit` and `OnPropertiesSet` are recovered and logged to the console, preventing application crashes.
 
 ## Best Practices
 
-1. **Keep lifecycle methods fast:** Avoid heavy computation in `OnInit` or `OnParametersSet`. Launch goroutines for async work.
+1. **Keep lifecycle methods fast:** Avoid heavy computation in `OnInit` or `OnPropertiesSet`. Launch goroutines for async work.
 
 2. **Always call `StateHasChanged()` after async updates:** The framework doesn't automatically detect state changes from goroutines.
 
-3. **Implement change detection in `OnParametersSet`:** Compare current props with previous values to avoid unnecessary work:
+3. **Implement change detection in `OnPropertiesSet`:** Compare current props with previous values to avoid unnecessary work:
 
    ```go
-   func (c *DataDisplay) OnParametersSet() {
+   func (c *DataDisplay) OnPropertiesSet() {
        if c.DataID != c.prevDataID {
            c.prevDataID = c.DataID
            go c.fetchData()
@@ -433,7 +433,7 @@ func (c *Component) OnInit() {
 ### Pattern 2: React to Prop Changes
 
 ```go
-func (c *Component) OnParametersSet() {
+func (c *Component) OnPropertiesSet() {
     if c.UserID != c.prevUserID {
         c.prevUserID = c.UserID
         c.IsLoading = true
