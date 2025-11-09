@@ -8,7 +8,7 @@ import "fmt"
 
 // callOnInit invokes the OnInit lifecycle method in production mode.
 // In production mode, panics are recovered and logged to prevent application crashes.
-func (r *Renderer) callOnInit(initializer Initializer, key string) {
+func (r *RendererImpl) callOnInit(initializer Initializer, key string) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			fmt.Printf("ERROR: OnInit panic in component %s: %v\n", key, rec)
@@ -20,7 +20,7 @@ func (r *Renderer) callOnInit(initializer Initializer, key string) {
 
 // callOnParametersSet invokes the OnParametersSet lifecycle method in production mode.
 // In production mode, panics are recovered and logged to prevent application crashes.
-func (r *Renderer) callOnParametersSet(receiver ParameterReceiver, key string) {
+func (r *RendererImpl) callOnParametersSet(receiver ParameterReceiver, key string) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			fmt.Printf("ERROR: OnParametersSet panic in component %s: %v\n", key, rec)
@@ -32,7 +32,7 @@ func (r *Renderer) callOnParametersSet(receiver ParameterReceiver, key string) {
 
 // callOnDestroy invokes the OnDestroy lifecycle method in production mode.
 // In production mode, panics are recovered and logged to prevent application crashes.
-func (r *Renderer) callOnDestroy(cleaner Cleaner, key string) {
+func (r *RendererImpl) callOnDestroy(cleaner Cleaner, key string) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			fmt.Printf("ERROR: OnDestroy panic in component %s: %v\n", key, rec)

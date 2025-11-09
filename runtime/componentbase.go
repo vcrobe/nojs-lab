@@ -1,20 +1,18 @@
-//go:build js || wasm
-// +build js wasm
-
 package runtime
 
 import "fmt"
 
 // ComponentBase is a struct that components can embed to gain access to the
 // StateHasChanged method, which triggers a UI re-render.
+// This type has no build tags and works in both WASM and test environments.
 type ComponentBase struct {
-	renderer *Renderer
+	renderer Renderer // Use interface type, not concrete implementation
 }
 
 // SetRenderer is called by the framework's runtime to inject a reference
 // to the renderer, enabling StateHasChanged. This method should not be
 // called by user code.
-func (b *ComponentBase) SetRenderer(r *Renderer) {
+func (b *ComponentBase) SetRenderer(r Renderer) {
 	b.renderer = r
 }
 

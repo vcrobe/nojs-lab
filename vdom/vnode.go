@@ -1,9 +1,7 @@
-//go:build js || wasm
-// +build js wasm
-
 package vdom
 
 // VNode represents a virtual DOM node.
+// This core file has NO build tags, making it available to both WASM and native test builds.
 type VNode struct {
 	Tag        string         // The HTML tag name
 	Attributes map[string]any // The attributes of the node

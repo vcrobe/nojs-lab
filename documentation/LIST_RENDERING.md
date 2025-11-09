@@ -318,7 +318,7 @@ func (c *UserList) Render(r *runtime.Renderer) *vdom.VNode {
 - Updated `generateNodeCode()` to handle `<go-for>` placeholder nodes
 - Updated child collection logic to spread for-loop VNode slices
 
-**`vdom/vnode.go`:**
+**`vdom/vnode_core.go`:**
 - Added `Key interface{}` field to VNode struct for future reconciliation
 
 ### Regex Patterns

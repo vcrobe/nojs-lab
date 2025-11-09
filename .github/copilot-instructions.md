@@ -18,9 +18,10 @@ Key files
 - `core.js`: loads `main.wasm` with `Go` from `wasm_exec.js`, provides component loading and framework bootstrapping.
 - `labtests.js`: browser-side helpers for testing Go-JS interop.
 - `console/`, `dialogs/`, `sessionStorage/`: thin wrappers around `syscall/js` for browser APIs.
-- `vdom/vnode.go`: VNode struct representing virtual DOM nodes with type, attributes, children, and text content.
-- `vdom/render.go`: minimal DOM renderer implementing the patch process (currently supports `<p>`, `<button>`, `<div>`, `<input>`).
-- `component/component.go`: Component interface defining `Render() *vdom.VNode` for UI building blocks.
+- `vdom/vnode_core.go`: VNode struct (no build tags) representing virtual DOM nodes with type, attributes, children, and text content.
+- `vdom/render.go`: minimal DOM renderer implementing the patch process (WASM-only, supports all HTML elements).
+- `runtime/component.go`: Component interface (no build tags) defining `Render(runtime.Renderer) *vdom.VNode` for UI building blocks.
+- `runtime/renderer.go`: Renderer interface (no build tags) with RendererImpl concrete implementation (WASM-only).
 - `index.html`: static HTML shell for the application.
 
 Current architecture development:
@@ -150,4 +151,5 @@ Notes
 - Entrypoint: `main.go`
 - Interop: syscall/js + wrappers in `console/`, `dialogs/`, `sessionStorage/`
 - UI: `index.html`, `core.js`, `labtests.js`
-- VDOM types: `vdom/vnode.go`, API contract: `component/component.go`
+- Core types (no build tags): `vdom/vnode_core.go`, `runtime/component.go`, `runtime/renderer.go`
+- WASM implementations: `vdom/render.go`, `runtime/renderer.go` (RendererImpl)

@@ -1,15 +1,17 @@
-//go:build js || wasm
-// +build js wasm
-
 package runtime
 
-import (
-	"github.com/vcrobe/nojs/vdom"
-)
+import "github.com/vcrobe/nojs/vdom"
 
 // Component interface defines the structure for all components in the framework.
-// The Render method now accepts the runtime renderer to manage child components.
+// This interface has NO build tags, making it available to both WASM and native test builds.
+// The Render method accepts the Renderer interface (not concrete type) so both WASM
+// and test implementations can use it.
 type Component interface {
-	Render(r *Renderer) *vdom.VNode
-	SetRenderer(r *Renderer)
+	// Render generates the virtual DOM tree for this component.
+	// The renderer parameter provides access to framework services like RenderChild.
+	Render(r Renderer) *vdom.VNode
+
+	// SetRenderer is called by the framework to attach the renderer to the component.
+	// This enables StateHasChanged() to trigger re-renders.
+	SetRenderer(r Renderer)
 }
