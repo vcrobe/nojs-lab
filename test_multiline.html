@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Multi-line Tag Test</title>
+</head>
+<body>
+    <h2>Single-line format (works):</h2>
+    <pre>&lt;h1&gt;Blog Posts for the Year {Year}&lt;/h1&gt;</pre>
+    
+    <h2>Multi-line format (now also works!):</h2>
+    <pre>&lt;h1&gt;
+    Blog Posts for the Year {Year}
+&lt;/h1&gt;</pre>
+    
+    <h2>Both formats now compile correctly!</h2>
+    <p>The AOT compiler now properly concatenates all text nodes within an element,
+    handling multi-line text with data bindings correctly.</p>
+</body>
+</html>

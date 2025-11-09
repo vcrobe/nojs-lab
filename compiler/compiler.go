@@ -1172,7 +1172,7 @@ func generateTextExpression(text string, receiver string, currentComp componentI
 		args = append(args, fmt.Sprintf("%s.%s", receiver, fieldName))
 	}
 
-	return fmt.Sprintf(`fmt.Sprintf("%s", %s)`, formatString, strings.Join(args, ", "))
+	return fmt.Sprintf(`fmt.Sprintf(%s, %s)`, strconv.Quote(formatString), strings.Join(args, ", "))
 }
 
 // generateForLoopCode generates Go for...range loop code for list rendering.
@@ -1598,11 +1598,19 @@ func generateNodeCode(n *html.Node, receiver string, componentMap map[string]com
 			}
 		case "p", "button", "li", "h1", "h2", "h3", "h4", "h5", "h6":
 			textContent := ""
-			if n.FirstChild != nil && n.FirstChild.Type == html.TextNode {
+			// Concatenate all text nodes within the element to handle multi-line text
+			var textBuilder strings.Builder
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				if c.Type == html.TextNode {
+					textBuilder.WriteString(c.Data)
+				}
+			}
+			fullText := textBuilder.String()
+			if fullText != "" {
 				// Handle data binding and inline conditionals in the text content
 				// Estimate line number by searching for the text in the HTML source
-				lineNum := estimateLineNumber(htmlSource, n.FirstChild.Data)
-				textContent = generateTextExpression(n.FirstChild.Data, receiver, currentComp, htmlSource, lineNum, loopCtx)
+				lineNum := estimateLineNumber(htmlSource, fullText)
+				textContent = generateTextExpression(fullText, receiver, currentComp, htmlSource, lineNum, loopCtx)
 			} else {
 				textContent = `""` // Default to empty string if no text node
 			}
@@ -1633,9 +1641,17 @@ func generateNodeCode(n *html.Node, receiver string, componentMap map[string]com
 		case "option":
 			// Handle option element
 			textContent := ""
-			if n.FirstChild != nil && n.FirstChild.Type == html.TextNode {
-				lineNum := estimateLineNumber(htmlSource, n.FirstChild.Data)
-				textContent = generateTextExpression(n.FirstChild.Data, receiver, currentComp, htmlSource, lineNum, loopCtx)
+			// Concatenate all text nodes within the element to handle multi-line text
+			var textBuilder strings.Builder
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				if c.Type == html.TextNode {
+					textBuilder.WriteString(c.Data)
+				}
+			}
+			fullText := textBuilder.String()
+			if fullText != "" {
+				lineNum := estimateLineNumber(htmlSource, fullText)
+				textContent = generateTextExpression(fullText, receiver, currentComp, htmlSource, lineNum, loopCtx)
 			} else {
 				textContent = `""`
 			}
@@ -1659,11 +1675,18 @@ func generateNodeCode(n *html.Node, receiver string, componentMap map[string]com
 				return fmt.Sprintf("vdom.NewVNode(%s, %s, %s, \"\")", strconv.Quote(tagName), attrsMapStr, strings.TrimSuffix(childrenStr, "..."))
 			} else {
 				if childrenStr == "" {
-					// Check if there's text content
+					// Check if there's text content - concatenate all text nodes
 					textContent := ""
-					if n.FirstChild != nil && n.FirstChild.Type == html.TextNode {
-						lineNum := estimateLineNumber(htmlSource, n.FirstChild.Data)
-						textContent = generateTextExpression(n.FirstChild.Data, receiver, currentComp, htmlSource, lineNum, loopCtx)
+					var textBuilder strings.Builder
+					for c := n.FirstChild; c != nil; c = c.NextSibling {
+						if c.Type == html.TextNode {
+							textBuilder.WriteString(c.Data)
+						}
+					}
+					fullText := textBuilder.String()
+					if fullText != "" {
+						lineNum := estimateLineNumber(htmlSource, fullText)
+						textContent = generateTextExpression(fullText, receiver, currentComp, htmlSource, lineNum, loopCtx)
 						return fmt.Sprintf("vdom.NewVNode(%s, %s, nil, %s)", strconv.Quote(tagName), attrsMapStr, textContent)
 					}
 					return fmt.Sprintf("vdom.NewVNode(%s, %s, nil, \"\")", strconv.Quote(tagName), attrsMapStr)
