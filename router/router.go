@@ -3,10 +3,10 @@
 package router
 
 import (
-	"fmt"
 	"strings"
 	"syscall/js"
 
+	"github.com/vcrobe/nojs/console"
 	"github.com/vcrobe/nojs/runtime"
 )
 
@@ -150,7 +150,7 @@ func (r *Router) handlePathChange() {
 		r.onChange(r.notFoundHandler(nil), path)
 	} else if r.onChange != nil {
 		// No route found and no 404 handler configured
-		fmt.Printf("[Router] No route found for path: %s\n", path)
+		console.Warn("[Router] No route found for path: '%s'\n", path)
 	}
 }
 

@@ -28,18 +28,18 @@ func main() {
 	})
 
 	appRouter.Handle("/blog/{year}", func(params map[string]string) runtime.Component {
-		x, err := strconv.Atoi(params["year"])
+		year, err := strconv.Atoi(params["year"])
 		if err != nil {
 			console.Warn("Error parsing {year} parameter in route `/blog/{year}`: ", err.Error())
 		}
 
-		return &appcomponents.BlogPage{Year: x}
+		return &appcomponents.BlogPage{Year: year}
 	})
 
 	// Optional: Handle 404 cases
-	// appRouter.HandleNotFound(func(params map[string]string) runtime.Component {
-	//     return &appcomponents.NotFoundPage{}
-	// })
+	appRouter.HandleNotFound(func(params map[string]string) runtime.Component {
+		return &appcomponents.PageNotFound{}
+	})
 
 	// 3. Create the Renderer, passing the router as the NavigationManager
 	renderer := runtime.NewRenderer(appRouter, "#app")
