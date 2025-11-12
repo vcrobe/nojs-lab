@@ -4,8 +4,11 @@
     <nav>
         <RouterLink Href="/about">Go to About Page</RouterLink>
         <br/>
-        <RouterLink Href="/blog/2025">Go to Blogs Page (2025)</RouterLink>
-        <br/>
-        <RouterLink Href="/blog/1930">Go to Blogs Page (1930)</RouterLink>
+        {@for _, v := range Years trackBy v}
+            <RouterLink Href="/blog/{v}">Go to Blogs Page ({v})</RouterLink>
+            <br/>
+        {@endfor}
+
+        <RouterLink Href="/blog/paco">Go to Blogs Page (paco)</RouterLink>
     </nav>
 </div>

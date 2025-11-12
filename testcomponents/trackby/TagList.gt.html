@@ -1,0 +1,9 @@
+<div class="tag-list">
+    <h2>Tags</h2>
+    
+    <ul>
+        {@for i, tag := range Tags trackBy tag}
+            <li>Tag {i}: {tag}</li>
+        {@endfor}
+    </ul>
+</div>

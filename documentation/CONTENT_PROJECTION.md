@@ -73,7 +73,7 @@ func (c *Card) Render(r *runtime.Renderer) *vdom.VNode {
         vdom.Div(map[string]any{"class": "card-body"}, 
             func() []*vdom.VNode {
                 if len(c.BodyContent) == 0 {
-                    console.Warning("[Slot] Rendering empty content slot 'BodyContent' in component 'Card'. Parent provided no content.")
+                    console.Warn("[Slot] Rendering empty content slot 'BodyContent' in component 'Card'. Parent provided no content.")
                 }
                 return c.BodyContent
             }()...)) // Spread operator

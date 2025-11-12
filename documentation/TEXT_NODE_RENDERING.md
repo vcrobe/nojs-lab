@@ -379,13 +379,6 @@ Element nodes require more memory:
 </a>
 ```
 
-**Debug logging:**
-```javascript
-[DEBUG] Creating text node with content: Go to About Page
-[DEBUG] Text node created, truthy: true
-[DEBUG] Child appended to a
-```
-
 ## Future Enhancements
 
 Potential improvements:

@@ -6,8 +6,18 @@ This document describes the implementation of list rendering in the nojs Go + WA
 
 ## Template Syntax
 
-The list rendering syntax requires a `trackBy` clause to uniquely identify each item:
+The list rendering syntax requires a `trackBy` clause to uniquely identify each item. The framework supports two `trackBy` formats:
 
+**1. Bare Variable** (for primitive types like `string`, `int`, `bool`, `uint64`, etc.):
+```html
+<ul>
+    {@for i, id := range IDs trackBy id}
+        <li>Item</li>
+    {@endfor}
+</ul>
+```
+
+**2. Dot-Notation** (for struct fields):
 ```html
 <ul>
     {@for i, user := range Users trackBy user.ID}
@@ -18,17 +28,31 @@ The list rendering syntax requires a `trackBy` clause to uniquely identify each 
 
 ### Supported Syntax Variations
 
-#### With Index and Value
+#### Struct Field with Index and Value
 ```html
 {@for i, user := range Users trackBy user.ID}
     <li>Item {i}: {user.Name}</li>
 {@endfor}
 ```
 
-#### Using Underscore to Ignore Index (Required Syntax)
+#### Struct Field Using Underscore to Ignore Index
 ```html
 {@for _, user := range Users trackBy user.ID}
     <div>User: {user.Name}</div>
+{@endfor}
+```
+
+#### Primitive Type with Index
+```html
+{@for i, tag := range Tags trackBy tag}
+    <div>Tag {i}: {tag}</div>
+{@endfor}
+```
+
+#### Primitive Type Without Index
+```html
+{@for _, id := range IDs trackBy id}
+    <span>ID: {id}</span>
 {@endfor}
 ```
 

@@ -1,0 +1,14 @@
+<div class="multi-item-list">
+    <h2>Items with Metadata</h2>
+    
+    <ul>
+        {@for i, item := range Items trackBy item.ID}
+            <li>
+                <strong>{item.Name}</strong>
+            </li>
+            <li class="metadata">
+                ID: {item.ID} | Index: {i}
+            </li>
+        {@endfor}
+    </ul>
+</div>

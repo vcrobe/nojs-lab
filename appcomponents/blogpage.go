@@ -13,7 +13,7 @@ import (
 type BlogPage struct {
 	runtime.ComponentBase
 
-	Year string
+	Year int
 }
 
 // NavigateToHome handles navigation to the home page

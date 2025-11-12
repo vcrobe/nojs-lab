@@ -1386,54 +1386,77 @@ func generateForLoopCode(n *html.Node, receiver string, componentMap map[string]
 	}
 
 	// Validate trackBy expression
-	// Parse trackBy to extract variable and field: "user.ID" -> variable="user", field="ID"
+	// Supports two formats:
+	// 1. Bare variable: "id" (for primitive types like string, int)
+	// 2. Dot-notation: "user.ID" (for struct fields)
 	trackByParts := strings.Split(trackByExpr, ".")
-	if len(trackByParts) != 2 {
-		fmt.Fprintf(os.Stderr, "Compilation Error in %s: trackBy expression '%s' must be in format 'variable.Field' (e.g., 'user.ID').\n",
-			currentComp.Path, trackByExpr)
-		os.Exit(1)
-	}
 
-	trackByVar := trackByParts[0]
-	trackByField := trackByParts[1]
+	var trackByVar, trackByField string
 
-	// Verify the variable matches the loop value variable
-	if trackByVar != valueVar {
-		fmt.Fprintf(os.Stderr, "Compilation Error in %s: trackBy variable '%s' must match the loop value variable '%s'.\n"+
-			"  Expected: trackBy %s.FieldName\n",
-			currentComp.Path, trackByVar, valueVar, valueVar)
-		os.Exit(1)
-	}
+	if len(trackByParts) == 1 {
+		// Bare variable format: trackBy id
+		trackByVar = trackByParts[0]
 
-	// Extract element type from slice type: "[]User" -> "User"
-	elementType := strings.TrimPrefix(propDesc.GoType, "[]")
+		// Verify the variable matches the loop value variable
+		if trackByVar != valueVar {
+			fmt.Fprintf(os.Stderr, "Compilation Error in %s: trackBy variable '%s' must match the loop value variable '%s'.\n"+
+				"  For bare variables, use: trackBy %s\n"+
+				"  For struct fields, use: trackBy %s.FieldName\n",
+				currentComp.Path, trackByVar, valueVar, valueVar, valueVar)
+			os.Exit(1)
+		}
+	} else if len(trackByParts) >= 2 {
+		// Dot-notation format: trackBy user.ID (or nested: user.Profile.ID)
+		trackByVar = trackByParts[0]
+		trackByField = strings.Join(trackByParts[1:], ".") // Handle nested fields like user.Profile.ID
 
-	// Validate that the trackBy field exists on the element type
-	// We need to inspect the element type's struct definition
-	goFilePath := filepath.Join(filepath.Dir(currentComp.Path), strings.ToLower(currentComp.PascalName)+".go")
-	elementSchema, err := inspectStructInFile(goFilePath, elementType)
-	if err != nil {
-		// If we can't find the struct in the component file, it might be defined elsewhere
-		// For now, we'll skip validation with a warning
-		fmt.Fprintf(os.Stderr, "Warning in %s: Could not validate trackBy field '%s' on type '%s': %v\n",
-			currentComp.Path, trackByField, elementType, err)
+		// Verify the variable matches the loop value variable
+		if trackByVar != valueVar {
+			fmt.Fprintf(os.Stderr, "Compilation Error in %s: trackBy variable '%s' must match the loop value variable '%s'.\n"+
+				"  For bare variables, use: trackBy %s\n"+
+				"  For struct fields, use: trackBy %s.FieldName\n",
+				currentComp.Path, trackByVar, valueVar, valueVar, valueVar)
+			os.Exit(1)
+		}
+
+		// Extract element type from slice type: "[]User" -> "User"
+		elementType := strings.TrimPrefix(propDesc.GoType, "[]")
+
+		// Validate that the trackBy field exists on the element type
+		// We need to inspect the element type's struct definition
+		goFilePath := filepath.Join(filepath.Dir(currentComp.Path), strings.ToLower(currentComp.PascalName)+".go")
+		elementSchema, err := inspectStructInFile(goFilePath, elementType)
+		if err != nil {
+			// If we can't find the struct in the component file, it might be defined elsewhere
+			// For now, we'll skip validation with a warning
+			fmt.Fprintf(os.Stderr, "Warning in %s: Could not validate trackBy field '%s' on type '%s': %v\n",
+				currentComp.Path, trackByField, elementType, err)
+		} else {
+			// Check if the trackBy field exists on the element type (case-insensitive lookup)
+			// For nested fields, only validate the first part
+			firstField := strings.Split(trackByField, ".")[0]
+			propDescField, exists := elementSchema.Props[strings.ToLower(firstField)]
+			if !exists {
+				availableFields := strings.Join(getAvailableFieldNames(elementSchema.Props), ", ")
+				fmt.Fprintf(os.Stderr, "Compilation Error in %s: trackBy identifier '%s' not found on type '%s'.\nAvailable fields: [%s]\n",
+					currentComp.Path, trackByField, elementType, availableFields)
+				os.Exit(1)
+			}
+
+			// Verify exact case match - the field name in the template must match the actual struct field
+			if propDescField.Name != firstField {
+				availableFields := strings.Join(getAvailableFieldNames(elementSchema.Props), ", ")
+				fmt.Fprintf(os.Stderr, "Compilation Error in %s: trackBy identifier '%s' not found on type '%s'.\nAvailable fields: [%s]\n",
+					currentComp.Path, trackByField, elementType, availableFields)
+				os.Exit(1)
+			}
+		}
 	} else {
-		// Check if the trackBy field exists on the element type (case-insensitive lookup)
-		propDesc, exists := elementSchema.Props[strings.ToLower(trackByField)]
-		if !exists {
-			availableFields := strings.Join(getAvailableFieldNames(elementSchema.Props), ", ")
-			fmt.Fprintf(os.Stderr, "Compilation Error in %s: trackBy identifier '%s' not found on type '%s'.\nAvailable fields: [%s]\n",
-				currentComp.Path, trackByField, elementType, availableFields)
-			os.Exit(1)
-		}
-
-		// Verify exact case match - the field name in the template must match the actual struct field
-		if propDesc.Name != trackByField {
-			availableFields := strings.Join(getAvailableFieldNames(elementSchema.Props), ", ")
-			fmt.Fprintf(os.Stderr, "Compilation Error in %s: trackBy identifier '%s' not found on type '%s'.\nAvailable fields: [%s]\n",
-				currentComp.Path, trackByField, elementType, availableFields)
-			os.Exit(1)
-		}
+		fmt.Fprintf(os.Stderr, "Compilation Error in %s: trackBy expression '%s' must be in one of these formats:\n"+
+			"  - Bare variable: trackBy %s (for primitive types)\n"+
+			"  - Struct field: trackBy %s.FieldName (for struct types)\n",
+			currentComp.Path, trackByExpr, valueVar, valueVar)
+		os.Exit(1)
 	}
 
 	// Generate the loop body - collect child VNodes
@@ -1462,14 +1485,18 @@ func generateForLoopCode(n *html.Node, receiver string, componentMap map[string]
 	}
 
 	// Generate code for each child node in the loop body
+	// Use a counter to ensure unique variable names for each child element
+	childCounter := 0
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		if c.Type == html.ElementNode || (c.Type == html.TextNode && strings.TrimSpace(c.Data) != "") {
 			childCode := generateNodeCode(c, receiver, componentMap, currentComp, htmlSource, opts, loopCtx)
 			if childCode != "" {
-				code.WriteString(fmt.Sprintf("\t\t%s_child := %s\n", valueVar, childCode))
-				code.WriteString(fmt.Sprintf("\t\tif %s_child != nil {\n", valueVar))
-				code.WriteString(fmt.Sprintf("\t\t\t%s_nodes = append(%s_nodes, %s_child)\n", valueVar, valueVar, valueVar))
+				childVarName := fmt.Sprintf("%s_child_%d", valueVar, childCounter)
+				code.WriteString(fmt.Sprintf("\t\t%s := %s\n", childVarName, childCode))
+				code.WriteString(fmt.Sprintf("\t\tif %s != nil {\n", childVarName))
+				code.WriteString(fmt.Sprintf("\t\t\t%s_nodes = append(%s_nodes, %s)\n", valueVar, valueVar, childVarName))
 				code.WriteString("\t\t}\n")
+				childCounter++
 			}
 		}
 	}

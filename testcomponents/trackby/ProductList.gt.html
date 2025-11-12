@@ -1,0 +1,9 @@
+<div class="product-list">
+    <h2>Products</h2>
+    
+    <ul>
+        {@for i, product := range Products trackBy product.ID}
+            <li>Product {i}: {product.Name} (ID: {product.ID})</li>
+        {@endfor}
+    </ul>
+</div>

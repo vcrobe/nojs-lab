@@ -4,7 +4,10 @@
 package main
 
 import (
+	"strconv"
+
 	"github.com/vcrobe/nojs/appcomponents"
+	"github.com/vcrobe/nojs/console"
 	"github.com/vcrobe/nojs/router"
 	"github.com/vcrobe/nojs/runtime"
 )
@@ -25,7 +28,12 @@ func main() {
 	})
 
 	appRouter.Handle("/blog/{year}", func(params map[string]string) runtime.Component {
-		return &appcomponents.BlogPage{Year: params["year"]}
+		x, err := strconv.Atoi(params["year"])
+		if err != nil {
+			console.Warning("Error parsing {year} parameter in route `/blog/{year}`: ", err.Error())
+		}
+
+		return &appcomponents.BlogPage{Year: x}
 	})
 
 	// Optional: Handle 404 cases
