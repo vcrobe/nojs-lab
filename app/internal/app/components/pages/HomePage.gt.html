@@ -10,4 +10,20 @@
             <br/>
         {@endfor}
     </nav>
+
+    <button @onclick="ShowTheModal">Show Modal</button>
+    <p>Modal result: {LastModalResult}</p>
+    <p>Is modal visible: {IsMyModalVisible}</p>
+
+    <Modal 
+        IsVisible="{IsMyModalVisible}"
+        Title="An Important Message"
+        Type="{modal.Information}"
+        ShowCancelButton="{true}"
+        OnClose="HandleModalClose"
+    >
+        <p>This is the body of the modal.</p>
+        <p>It's all type-safe and compiled!</p>
+
+    </Modal>
 </div>

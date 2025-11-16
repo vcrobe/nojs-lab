@@ -1,0 +1,23 @@
+{@if IsVisible}
+    <div class="dialog-backdrop">
+        <div class="dialog-content">
+            
+            <div class="dialog-header">
+                <h5 class="dialog-title">{Title}</h5>
+                <button @onclick="HandleCancel" class="btn-close">X</button>
+            </div>
+
+            <div class="dialog-body">
+                {BodyContent}
+            </div>
+
+            <div class="dialog-footer">
+                {@if ShowCancelButton}
+                    <button @onclick="HandleCancel" class="btn btn-secondary">Cancel</button>
+                {@endif}
+                <button @onclick="HandleOk" class="btn btn-primary">Ok</button>
+            </div>
+
+        </div>
+    </div>
+{@endif}
