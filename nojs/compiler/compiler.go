@@ -665,7 +665,7 @@ func discoverAndInspectComponents(rootDir string) ([]componentInfo, error) {
 }
 
 // extractTypeName extracts the type name from an AST expression.
-// Handles simple types (int, string, bool), slice types ([]User), and pointer types (*User).
+// Handles simple types (int, string, bool), slice types ([]User), pointer types (*User), and function types.
 func extractTypeName(expr ast.Expr) string {
 	switch t := expr.(type) {
 	case *ast.Ident:
@@ -683,6 +683,34 @@ func extractTypeName(expr ast.Expr) string {
 		// Qualified type like "time.Time"
 		if ident, ok := t.X.(*ast.Ident); ok {
 			return ident.Name + "." + t.Sel.Name
+		}
+	case *ast.FuncType:
+		// Function type like "func(result ModalResult)" or "func() string"
+		// We return a simplified representation that starts with "func"
+		// to allow type checking in prop conversion
+		var paramTypes []string
+		if t.Params != nil {
+			for _, param := range t.Params.List {
+				paramTypes = append(paramTypes, extractTypeName(param.Type))
+			}
+		}
+
+		var returnTypes []string
+		if t.Results != nil {
+			for _, result := range t.Results.List {
+				returnTypes = append(returnTypes, extractTypeName(result.Type))
+			}
+		}
+
+		// Build a string representation like "func(Type1, Type2) ReturnType"
+		paramsStr := strings.Join(paramTypes, ", ")
+		if len(returnTypes) == 0 {
+			return fmt.Sprintf("func(%s)", paramsStr)
+		} else if len(returnTypes) == 1 {
+			return fmt.Sprintf("func(%s) %s", paramsStr, returnTypes[0])
+		} else {
+			returnsStr := strings.Join(returnTypes, ", ")
+			return fmt.Sprintf("func(%s) (%s)", paramsStr, returnsStr)
 		}
 	}
 	return "unknown"
@@ -2139,6 +2167,46 @@ func getContextLines(source string, lineNumber int, contextSize int) string {
 // convertPropValue generates the Go code to convert a string to the target type.
 // It handles data binding expressions in attribute values, respecting loop context.
 func convertPropValue(value, goType string, receiver string, currentComp componentInfo, htmlSource string, lineNumber int, loopCtx *loopContext) string {
+	// Debug: uncomment to see what values are being converted
+	// fmt.Fprintf(os.Stderr, "[convertPropValue] value=%q goType=%q\n", value, goType)
+
+	// First, check if value is wrapped in braces {}: if so, extract and handle as expression
+	if strings.HasPrefix(value, "{") && strings.HasSuffix(value, "}") {
+		// Extract the Go code from within braces
+		goCode := strings.TrimSuffix(strings.TrimPrefix(value, "{"), "}")
+
+		// For boolean literals, use as-is
+		if goCode == "true" || goCode == "false" {
+			return goCode
+		}
+
+		// For qualified names (e.g., modal.Information), use as-is
+		if strings.Contains(goCode, ".") && !strings.Contains(goCode, "(") {
+			return goCode
+		}
+
+		// For simple identifiers (component fields or loop variables)
+		if !strings.Contains(goCode, " ") && !strings.Contains(goCode, "(") {
+			// Check if this is a loop variable
+			if loopCtx != nil && (goCode == loopCtx.ValueVar || goCode == loopCtx.IndexVar || strings.HasPrefix(goCode, loopCtx.ValueVar+".")) {
+				return goCode
+			}
+
+			// Check if it's a component field (props or state)
+			propDesc, inProps := currentComp.Schema.Props[strings.ToLower(goCode)]
+			if !inProps {
+				propDesc, inProps = currentComp.Schema.State[strings.ToLower(goCode)]
+			}
+			if inProps {
+				// It's a component field - add receiver prefix
+				return fmt.Sprintf("%s.%s", receiver, propDesc.Name)
+			}
+		}
+
+		// For everything else (e.g., method names, complex expressions), use as-is
+		return goCode
+	}
+
 	switch goType {
 	case "string":
 		// Check if the value contains data binding expressions
@@ -2192,6 +2260,25 @@ func convertPropValue(value, goType string, receiver string, currentComp compone
 		// Literal boolean value
 		return fmt.Sprintf("func() bool { b, _ := strconv.ParseBool(\"%s\"); return b }()", value)
 	default:
+		// For unknown/custom types (enums, custom structs, etc.):
+		// - If value is a simple identifier, check if it's a method name (for function types)
+		if !strings.Contains(value, ".") && !strings.Contains(value, "(") && !strings.Contains(value, " ") {
+			// Check if this is a function type - if so, treat as method name
+			if strings.HasPrefix(goType, "func") {
+				// It's a function type - convert method name to receiver reference
+				return fmt.Sprintf("%s.%s", receiver, value)
+			}
+
+			// For non-function types, it might be a constant - use as-is
+			// (e.g., mypackage.SomeConstant will work, but SomeConstant alone might not)
+			return value
+		}
+
+		// If it contains a dot, it's likely a qualified name or constant - use as-is
+		if strings.Contains(value, ".") {
+			return value
+		}
+
 		// Default to string for unknown types
 		return strconv.Quote(value)
 	}

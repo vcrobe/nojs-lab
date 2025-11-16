@@ -592,10 +592,40 @@ func patchChildren(domElement js.Value, oldChildren, newChildren []*VNode) {
 
 	// Patch existing children
 	for i := 0; i < minLen; i++ {
-		childElement := domChildren.Call("item", i)
-		if childElement.Truthy() {
-			patchElement(childElement, oldChildren[i], newChildren[i])
+		oldChild := oldChildren[i]
+		newChild := newChildren[i]
+
+		// Handle case where old was nil but new is not (e.g., conditional rendering)
+		if oldChild == nil && newChild != nil {
+			newChildEl := createElement(newChild)
+			if newChildEl.Truthy() {
+				// Find the correct position to insert
+				if i < domChildren.Length() {
+					refChild := domChildren.Call("item", i)
+					if refChild.Truthy() {
+						domElement.Call("insertBefore", newChildEl, refChild)
+					} else {
+						domElement.Call("appendChild", newChildEl)
+					}
+				} else {
+					domElement.Call("appendChild", newChildEl)
+				}
+			}
+		} else if oldChild != nil && newChild == nil {
+			// Handle case where old existed but new is nil (e.g., conditional hiding)
+			deepReleaseCallbacks(oldChild)
+			childElement := domChildren.Call("item", i)
+			if childElement.Truthy() {
+				domElement.Call("removeChild", childElement)
+			}
+		} else if oldChild != nil && newChild != nil {
+			// Both exist, normal patching
+			childElement := domChildren.Call("item", i)
+			if childElement.Truthy() {
+				patchElement(childElement, oldChild, newChild)
+			}
 		}
+		// If both are nil, nothing to do
 	}
 
 	// Add new children if newChildren is longer
