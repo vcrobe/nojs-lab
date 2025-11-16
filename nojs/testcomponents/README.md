@@ -55,7 +55,7 @@ To test a new feature (e.g., events, lifecycle):
 1. Create a new directory: `testcomponents/featurename/`
 2. Add template: `Component.gt.html`
 3. Add WASM version: `component.go` (for AOT compiler)
-4. Run compiler: `../../compiler/aotcompiler -in . -out .`
+4. Run compiler: `../../compiler/aotcompiler -in .`
 5. Add test harness: `component_test_harness.go` (for go test)
 6. Write tests: `component_test.go`
 7. Document: `README.md`

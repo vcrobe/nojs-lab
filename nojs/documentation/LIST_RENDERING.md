@@ -186,7 +186,7 @@ Enable development warnings during compilation:
 
 ```bash
 cd compiler
-go run . -in .. -out ../appcomponents -dev-warnings
+go run . -in .. -dev
 ```
 
 **What it does:**
@@ -202,7 +202,7 @@ go run . -in .. -out ../appcomponents -dev-warnings
 **Production Build (without warnings):**
 ```bash
 cd compiler
-go run . -in .. -out ../appcomponents
+go run . -in ..
 ```
 No warning code is generated - cleaner output, smaller bundle.
 
@@ -429,7 +429,7 @@ To test list rendering:
 
 1. Create a component with a slice field
 2. Add `{@for}` directive to template with `trackBy`
-3. Compile: `cd compiler && go run . -in .. -out ../appcomponents -dev-warnings`
+3. Compile: `cd compiler && go run . -in .. -dev`
 4. Build WASM: `GOOS=js GOARCH=wasm go build -o main.wasm`
 5. Open `index.html` in browser
 6. Check browser console for dev warnings (if enabled)

@@ -559,17 +559,14 @@ func generateTernaryExpression(negated bool, condition, trueVal, falseVal, recei
 }
 
 // Compile is the main entry point for the AOT compiler.
-func Compile(srcDir, outDir string, devMode bool) error {
+// Generated files are placed in the same directory as their corresponding source templates.
+func Compile(srcDir string, devMode bool) error {
 	opts := compileOptions{DevMode: devMode}
 
-	// Convert srcDir and outDir to absolute paths for consistent path handling
+	// Convert srcDir to absolute path for consistent path handling
 	absSrcDir, err := filepath.Abs(srcDir)
 	if err != nil {
 		return fmt.Errorf("failed to resolve absolute path for srcDir: %w", err)
-	}
-	absOutDir, err := filepath.Abs(outDir)
-	if err != nil {
-		return fmt.Errorf("failed to resolve absolute path for outDir: %w", err)
 	}
 
 	// Step 1: Discover component templates and inspect their Go structs for props.
@@ -586,7 +583,7 @@ func Compile(srcDir, outDir string, devMode bool) error {
 
 	// Step 2: Loop through each discovered component and compile its template.
 	for _, comp := range components {
-		if err := compileComponentTemplate(comp, componentMap, absSrcDir, absOutDir, opts); err != nil {
+		if err := compileComponentTemplate(comp, componentMap, absSrcDir, opts); err != nil {
 			return fmt.Errorf("failed to compile template for %s: %w", comp.PascalName, err)
 		}
 	}
@@ -910,7 +907,7 @@ func collectUsedComponents(n *html.Node, componentMap map[string]componentInfo, 
 }
 
 // compileComponentTemplate handles the code generation for a single component.
-func compileComponentTemplate(comp componentInfo, componentMap map[string]componentInfo, inDir, outDir string, opts compileOptions) error {
+func compileComponentTemplate(comp componentInfo, componentMap map[string]componentInfo, inDir string, opts compileOptions) error {
 	htmlContent, err := os.ReadFile(comp.Path)
 	if err != nil {
 		return fmt.Errorf("failed to read template file %s: %w", comp.Path, err)
@@ -1010,21 +1007,9 @@ func (c *%[1]s) Render(r runtime.Renderer) *vdom.VNode {
 
 	outFileName := fmt.Sprintf("%s.generated.go", comp.PascalName)
 
-	// Calculate relative path from inDir to the component's directory
-	// This preserves the directory structure in the output
+	// Generate file in the same directory as the template
 	templateDir := filepath.Dir(comp.Path)
-	relPath, err := filepath.Rel(inDir, templateDir)
-	if err != nil {
-		return fmt.Errorf("failed to calculate relative path: %w", err)
-	}
-
-	// Apply the same relative structure to outDir
-	outputSubdir := filepath.Join(outDir, relPath)
-	if err := os.MkdirAll(outputSubdir, 0755); err != nil {
-		return fmt.Errorf("failed to create output directory %s: %w", outputSubdir, err)
-	}
-
-	outFilePath := filepath.Join(outputSubdir, outFileName)
+	outFilePath := filepath.Join(templateDir, outFileName)
 	return os.WriteFile(outFilePath, formattedSource, 0644)
 }
 

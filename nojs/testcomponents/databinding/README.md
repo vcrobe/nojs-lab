@@ -94,7 +94,7 @@ To add a new data binding test:
 2. Create component file (`yourcomponent.go` - NO build tags!)
    - Use `runtime.ComponentBase` for embedding
    - Add business logic methods
-3. Run AOT compiler: `../../compiler/aotcompiler -in . -out .`
+3. Run AOT compiler: `../../compiler/aotcompiler -in .`
 4. Write tests in `yourcomponent_test.go`
 
 **That's it!** No need for separate test harness files. The component definition works in both WASM and test environments.

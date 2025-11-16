@@ -203,7 +203,7 @@ To test conditional rendering:
 
 1. Create a component with boolean fields
 2. Add conditional blocks to the template
-3. Compile: `cd compiler && go run . -in=.. -out=../appcomponents`
+3. Compile: `cd compiler && go run . -in=..`
 4. Build WASM: `GOOS=js GOARCH=wasm go build -o main.wasm`
 5. Open `index.html` in a browser and toggle the boolean fields
 

@@ -48,7 +48,7 @@ Both test components can be compiled together:
 
 ```bash
 cd compiler
-go run . -in ../testcomponents/trackby -out ../testcomponents/trackby
+go run . -in ../testcomponents/trackby
 ```
 
 Expected output:
