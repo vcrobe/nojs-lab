@@ -50,6 +50,7 @@ type componentInfo struct {
 	PascalName    string
 	LowercaseName string
 	PackageName   string
+	ImportPath    string // Full import path (e.g., "github.com/vcrobe/nojs/appcomponents")
 	Schema        componentSchema
 }
 
@@ -561,8 +562,18 @@ func generateTernaryExpression(negated bool, condition, trueVal, falseVal, recei
 func compile(srcDir, outDir string, devMode bool) error {
 	opts := compileOptions{DevMode: devMode}
 
+	// Convert srcDir and outDir to absolute paths for consistent path handling
+	absSrcDir, err := filepath.Abs(srcDir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve absolute path for srcDir: %w", err)
+	}
+	absOutDir, err := filepath.Abs(outDir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve absolute path for outDir: %w", err)
+	}
+
 	// Step 1: Discover component templates and inspect their Go structs for props.
-	components, err := discoverAndInspectComponents(srcDir)
+	components, err := discoverAndInspectComponents(absSrcDir)
 	if err != nil {
 		return fmt.Errorf("failed to discover or inspect components: %w", err)
 	}
@@ -575,7 +586,7 @@ func compile(srcDir, outDir string, devMode bool) error {
 
 	// Step 2: Loop through each discovered component and compile its template.
 	for _, comp := range components {
-		if err := compileComponentTemplate(comp, componentMap, outDir, opts); err != nil {
+		if err := compileComponentTemplate(comp, componentMap, absSrcDir, absOutDir, opts); err != nil {
 			return fmt.Errorf("failed to compile template for %s: %w", comp.PascalName, err)
 		}
 	}
@@ -637,7 +648,8 @@ func discoverAndInspectComponents(rootDir string) ([]componentInfo, error) {
 				Path:          templatePath,
 				PascalName:    pascalName,
 				LowercaseName: strings.ToLower(pascalName),
-				PackageName:   pkg.Name, // Use the package name from the loader.
+				PackageName:   pkg.Name,    // Use the package name from the loader.
+				ImportPath:    pkg.PkgPath, // Full import path (e.g., "github.com/vcrobe/nojs/appcomponents")
 				Schema:        schema,
 			})
 
@@ -867,8 +879,38 @@ func inspectGoFile(path, structName string) (componentSchema, error) {
 	return schema, nil
 }
 
+// collectUsedComponents walks the HTML tree and collects all components used from other packages.
+// Returns a map of package name to import path.
+func collectUsedComponents(n *html.Node, componentMap map[string]componentInfo, currentComp componentInfo) map[string]string {
+	usedPackages := make(map[string]string)
+
+	var walk func(*html.Node)
+	walk = func(node *html.Node) {
+		if node.Type == html.ElementNode {
+			tagName := node.Data
+			// Check if this is a component
+			if compInfo, isComponent := componentMap[tagName]; isComponent {
+				// Check if it's from a different package
+				if compInfo.PackageName != currentComp.PackageName {
+					// Need to import this package
+					// Store mapping: package name -> full import path
+					usedPackages[compInfo.PackageName] = compInfo.ImportPath
+				}
+			}
+		}
+
+		// Recurse into children
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			walk(c)
+		}
+	}
+
+	walk(n)
+	return usedPackages
+}
+
 // compileComponentTemplate handles the code generation for a single component.
-func compileComponentTemplate(comp componentInfo, componentMap map[string]componentInfo, outDir string, opts compileOptions) error {
+func compileComponentTemplate(comp componentInfo, componentMap map[string]componentInfo, inDir, outDir string, opts compileOptions) error {
 	htmlContent, err := os.ReadFile(comp.Path)
 	if err != nil {
 		return fmt.Errorf("failed to read template file %s: %w", comp.Path, err)
@@ -901,11 +943,23 @@ func compileComponentTemplate(comp componentInfo, componentMap map[string]compon
 		return fmt.Errorf("no element found inside <body> tag to compile")
 	}
 
+	// Collect components used from other packages
+	usedPackages := collectUsedComponents(rootElement, componentMap, comp)
+
 	// Generate code for a single root node
 	generatedCode := generateNodeCode(rootElement, "c", componentMap, comp, htmlString, opts, nil)
 
 	// Generate the ApplyProps method body
 	applyPropsBody := generateApplyPropsBody(comp)
+
+	// Build additional imports for cross-package components
+	var additionalImports strings.Builder
+	if len(usedPackages) > 0 {
+		additionalImports.WriteString("\n")
+		for _, importPath := range usedPackages {
+			additionalImports.WriteString(fmt.Sprintf("\t\"%s\"\n", importPath))
+		}
+	}
 
 	// NOTE: NO build tags! This file must be available to both WASM and test builds.
 	// The core types (vdom.VNode, runtime.Renderer, runtime.Component) are now
@@ -920,7 +974,7 @@ import (
 	"github.com/vcrobe/nojs/console"
 	"github.com/vcrobe/nojs/events"
 	"github.com/vcrobe/nojs/runtime"
-	"github.com/vcrobe/nojs/vdom"
+	"github.com/vcrobe/nojs/vdom"%[5]s
 )
 
 // ApplyProps copies props from source to the receiver, preserving internal state.
@@ -946,7 +1000,7 @@ func (c *%[1]s) Render(r runtime.Renderer) *vdom.VNode {
 }
 `
 
-	source := fmt.Sprintf(template, comp.PascalName, comp.PackageName, generatedCode, applyPropsBody)
+	source := fmt.Sprintf(template, comp.PascalName, comp.PackageName, generatedCode, applyPropsBody, additionalImports.String())
 
 	// Format the generated source code
 	formattedSource, err := format.Source([]byte(source))
@@ -955,7 +1009,22 @@ func (c *%[1]s) Render(r runtime.Renderer) *vdom.VNode {
 	}
 
 	outFileName := fmt.Sprintf("%s.generated.go", comp.PascalName)
-	outFilePath := filepath.Join(outDir, outFileName)
+
+	// Calculate relative path from inDir to the component's directory
+	// This preserves the directory structure in the output
+	templateDir := filepath.Dir(comp.Path)
+	relPath, err := filepath.Rel(inDir, templateDir)
+	if err != nil {
+		return fmt.Errorf("failed to calculate relative path: %w", err)
+	}
+
+	// Apply the same relative structure to outDir
+	outputSubdir := filepath.Join(outDir, relPath)
+	if err := os.MkdirAll(outputSubdir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory %s: %w", outputSubdir, err)
+	}
+
+	outFilePath := filepath.Join(outputSubdir, outFileName)
 	return os.WriteFile(outFilePath, formattedSource, 0644)
 }
 
@@ -1681,7 +1750,17 @@ func generateNodeCode(n *html.Node, receiver string, componentMap map[string]com
 				key = fmt.Sprintf("%s_%d", compInfo.PascalName, childCount(n.Parent, n))
 			}
 
-			return fmt.Sprintf(`r.RenderChild("%s", &%s%s)`, key, compInfo.PascalName, propsStr)
+			// Determine if we need a qualified name (cross-package reference)
+			var componentRef string
+			if compInfo.PackageName != currentComp.PackageName {
+				// Cross-package: use qualified name
+				componentRef = fmt.Sprintf("%s.%s", compInfo.PackageName, compInfo.PascalName)
+			} else {
+				// Same package: use unqualified name
+				componentRef = compInfo.PascalName
+			}
+
+			return fmt.Sprintf(`r.RenderChild("%s", &%s%s)`, key, componentRef, propsStr)
 		}
 
 		// 2. Handle Standard HTML Elements

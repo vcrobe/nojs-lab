@@ -3,6 +3,7 @@
     <p>This is the home page.</p>
     <nav>
         <RouterLink Href="/about">Go to About Page</RouterLink>
+        <RouterLink Href="/admin">Go to Admin Page</RouterLink>
         <br/>
         {@for _, v := range Years trackBy v}
             <RouterLink Href="/blog/{v}">Go to Blogs Page ({v})</RouterLink>

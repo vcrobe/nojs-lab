@@ -7,6 +7,8 @@ import (
 	"strconv"
 
 	"github.com/vcrobe/nojs/appcomponents"
+	"github.com/vcrobe/nojs/appcomponents/admin"
+	"github.com/vcrobe/nojs/appcomponents/admin/settings"
 	"github.com/vcrobe/nojs/console"
 	"github.com/vcrobe/nojs/router"
 	"github.com/vcrobe/nojs/runtime"
@@ -25,6 +27,14 @@ func main() {
 
 	appRouter.Handle("/about", func(params map[string]string) runtime.Component {
 		return &appcomponents.AboutPage{}
+	})
+
+	appRouter.Handle("/admin", func(params map[string]string) runtime.Component {
+		return &admin.AdminPage{}
+	})
+
+	appRouter.Handle("/admin/settings", func(params map[string]string) runtime.Component {
+		return &settings.Settings{}
 	})
 
 	appRouter.Handle("/blog/{year}", func(params map[string]string) runtime.Component {
