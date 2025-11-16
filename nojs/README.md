@@ -14,20 +14,65 @@ Every feature in this framework is guided by a set of core principles. These rul
 
 # Project Compilation Instructions
 
-To compile this project, please follow these steps:
+The project uses a `Makefile` to simplify compilation. There are two main build workflows:
 
-1. Open a terminal and navigate to the root directory of the project.
-2. Run the following command to build the project for WebAssembly:
+## Full Build (Templates + WASM)
 
-   ``` bash
-   $ GOOS=js GOARCH=wasm go build -o main.wasm -tags=dev
+Use this when you've modified `.gt.html` template files:
+
+**Development mode (with `-tags=dev`):**
+```bash
+make full
+```
+
+**Production mode (without `-tags=dev`):**
+```bash
+make full-prod
+```
+
+## Quick Build (WASM only)
+
+Use this when templates haven't changed and you only want to rebuild the Go code:
+
+**Development mode (with `-tags=dev`):**
+```bash
+make wasm
+```
+
+**Production mode (without `-tags=dev`):**
+```bash
+make wasm-prod
+```
+
+## Typical Workflow
+
+1. **First time or after template changes:**
+   ```bash
+   make full
    ```
 
-   ``` PowerShell
-   PS> env:GOOS="js"; $env:GOARCH="wasm"; go build -o main.wasm
+2. **Subsequent builds while coding Go:**
+   ```bash
+   make wasm    # Much faster (~1-2 seconds)
    ```
 
-This command sets the target operating system to JavaScript (`GOOS=js`) and the architecture to WebAssembly (`GOARCH=wasm`). The output will be a `main.wasm` file, which can be used in web environments that support WebAssembly.
+3. **Before deployment:**
+   ```bash
+   make full-prod
+   ```
+
+## Other Commands
+
+```bash
+make help       # Show all available commands
+make clean      # Remove generated WASM binary
+```
+
+This Makefile automates the following:
+- **Template compilation:** Runs `go run github.com/vcrobe/nojs/cmd/nojs-compiler -in=./app/internal/app/components`
+- **WASM compilation:** Sets `GOOS=js` and `GOARCH=wasm`, then compiles to WebAssembly with optional `-tags=dev` flag
+
+The output will be `app/wwwroot/main.wasm`, which can be used in web environments that support WebAssembly.
 
 # Running the Project
 
