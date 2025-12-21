@@ -1,4 +1,4 @@
-.PHONY: help wasm wasm-prod full full-prod clean
+.PHONY: help wasm wasm-prod full full-prod clean serve
 
 # Variables
 COMPILER_PATH := github.com/vcrobe/nojs/cmd/nojs-compiler
@@ -54,3 +54,7 @@ clean:
 	@echo "🧹 Cleaning..."
 	@rm -f $(WASM_OUTPUT)
 	@echo "✅ Clean complete!"
+
+serve:
+	@echo "🚀 Starting development server on port 9090..."
+	@cd ./app/wwwroot && python3 -m http.server 9090
