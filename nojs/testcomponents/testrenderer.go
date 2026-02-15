@@ -62,3 +62,11 @@ func (r *TestRenderer) Navigate(path string) error {
 	// No-op for tests
 	return nil
 }
+
+// ReRenderSlot patches only the BodyContent slot of a layout.
+// For tests, this simply re-renders the slot parent component.
+func (r *TestRenderer) ReRenderSlot(slotParent runtime.Component) error {
+	// Re-render the slot parent component
+	slotParent.Render(r)
+	return nil
+}
