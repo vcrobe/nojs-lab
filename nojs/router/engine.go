@@ -156,12 +156,11 @@ func (e *Engine) Navigate(path string) error {
 	// The RenderChild mechanism ensures layouts are reused efficiently,
 	// and VDOM patching only updates what actually changed.
 	if e.onRouteChange != nil {
-		// Pass all instances from pivot onwards (the volatile chain to inject into MainLayout)
-		// This includes any sublayouts and the leaf page
-		chainToInject := newInstances[pivot:]
+		// Pass the full chain to AppShell so it can handle all layers correctly
+		// This includes the root layout, any preserved sublayouts, and new components
 		key := fmt.Sprintf("%s:%d", path, pivot) // Unique key includes pivot for reconciliation
-		console.Log("[Engine.Navigate] Calling onRouteChange with", len(chainToInject), "components, key:", key)
-		e.onRouteChange(chainToInject, key)
+		console.Log("[Engine.Navigate] Calling onRouteChange with", len(newInstances), "components, key:", key)
+		e.onRouteChange(newInstances, key)
 		console.Log("[Engine.Navigate] AppShell will handle rendering via StateHasChanged")
 
 		// Update state and return - AppShell's StateHasChanged handles the rendering

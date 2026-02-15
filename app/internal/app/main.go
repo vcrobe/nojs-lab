@@ -1,5 +1,4 @@
 //go:build js || wasm
-// +build js wasm
 
 package main
 
@@ -8,6 +7,7 @@ import (
 	"github.com/vcrobe/app/internal/app/components/pages/admin"
 	"github.com/vcrobe/app/internal/app/components/pages/admin/layouts"
 	"github.com/vcrobe/app/internal/app/components/pages/admin/settings"
+	"github.com/vcrobe/app/internal/app/components/pages/admin/users"
 	sharedlayouts "github.com/vcrobe/app/internal/app/components/shared/layouts"
 	"github.com/vcrobe/app/internal/app/context"
 	"github.com/vcrobe/nojs/console"
@@ -25,6 +25,7 @@ const (
 	AdminPage_TypeID    uint32 = 0x4E22E7B0
 	SettingsPage_TypeID uint32 = 0x3F33F681
 	BlogPage_TypeID     uint32 = 0x2E44F592
+	UsersPage_TypeID    uint32 = 0x1D55E483
 )
 
 func main() {
@@ -125,6 +126,23 @@ func main() {
 				},
 			},
 		},
+		{
+			Path: "/admin/users",
+			Chain: []router.ComponentMetadata{
+				{
+					Factory: func() runtime.Component { return mainLayout },
+					TypeID:  MainLayout_TypeID,
+				},
+				{
+					Factory: func() runtime.Component { return layouts.NewAdminLayout() },
+					TypeID:  AdminLayout_TypeID,
+				},
+				{
+					Factory: func() runtime.Component { return &users.Users{} },
+					TypeID:  UsersPage_TypeID,
+				},
+			},
+		},
 	})
 
 	// Create AppShell to wrap the router's page rendering
@@ -133,9 +151,10 @@ func main() {
 	renderer.ReRender()
 
 	// Initialize the router with a callback to update AppShell when navigation occurs
-	if err := routerEngine.Start(func(chain []runtime.Component, key string) {
+	err := routerEngine.Start(func(chain []runtime.Component, key string) {
 		appShell.SetPage(chain, key)
-	}); err != nil {
+	})
+	if err != nil {
 		console.Error("Failed to start router:", err.Error())
 		panic(err)
 	}
