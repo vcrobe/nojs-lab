@@ -1,5 +1,4 @@
 //go:build js || wasm
-// +build js wasm
 
 package main
 
@@ -15,9 +14,10 @@ const (
 	AboutPage_TypeID    uint32 = 0x5D11D8CF
 	AdminPage_TypeID    uint32 = 0x4E22E7B0
 	SettingsPage_TypeID uint32 = 0x3F33F681
+	UsersPage_TypeID    uint32 = 0x1D55E483
 	BlogPage_TypeID     uint32 = 0x2E44F592
 	PageNotFound_TypeID uint32 = 0x1F55E483
 
 	// Shared components
-	RouterLink_TypeID uint32 = 0x10666D374
+	RouterLink_TypeID uint32 = 0x00666D374
 )
