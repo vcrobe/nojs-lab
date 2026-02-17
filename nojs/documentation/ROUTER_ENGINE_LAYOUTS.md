@@ -2,9 +2,11 @@
 
 ## Overview
 
-This document provides a detailed technical explanation of the **Router Engine** (`router/engine.go`) and how it manages layout hierarchies, component instance reuse, and content rendering through the **pivot algorithm** and **AppShell pattern**.
+This document provides a detailed technical explanation of the **Router Engine** (`router/router.go`) and how it manages layout hierarchies, component instance reuse, and content rendering through the **pivot algorithm** and **AppShell pattern**.
 
-While the basic `Router` implementation (`router/router.go`) handles simple route-to-component mapping, the `Engine` provides sophisticated layout management for complex applications with nested layouts, sublayouts, and pages.
+The Engine provides sophisticated layout management for complex applications with nested layouts, sublayouts, and pages. It uses the HTML5 History API with clean URLs and preserves layout component instances across navigations for optimal performance.
+
+For general router integration concepts (NavigationManager interface, event handling, VDOM patching), see [ROUTER_ARCHITECTURE.md](ROUTER_ARCHITECTURE.md).
 
 ---
 
@@ -21,7 +23,6 @@ While the basic `Router` implementation (`router/router.go`) handles simple rout
 9. [Memory Management](#memory-management)
 10. [Practical Examples](#practical-examples)
 11. [Performance Optimization](#performance-optimization)
-12. [Comparison: Router vs Engine](#comparison-router-vs-engine)
 
 ---
 
@@ -1222,100 +1223,11 @@ Measured on typical hardware (i5-8250U, Chrome 110):
 
 ---
 
-## Comparison: Router vs Engine
-
-The framework provides two router implementations:
-
-### Basic Router (`router/router.go`)
-
-**Use when**:
-- Simple applications with no nested layouts
-- Every page is independent
-- State preservation not critical
-
-**Features**:
-- ✓ Path and Hash modes
-- ✓ Route parameters (`/users/{id}`)
-- ✓ 404 handling
-- ✓ Browser history integration
-- ✗ No layout chain management
-- ✗ No component instance reuse
-- ✗ No pivot algorithm
-
-**API**:
-```go
-appRouter := router.New(&router.Config{Mode: router.PathMode})
-appRouter.Handle("/", func(params map[string]string) runtime.Component {
-    return &HomePage{}
-})
-appRouter.Start(func(newComponent runtime.Component) {
-    renderer.SetCurrentComponent(newComponent)
-    renderer.ReRender()
-})
-```
-
-**Every navigation**: Component instance destroyed and recreated.
-
-### Router Engine (`router/engine.go`)
-
-**Use when**:
-- Complex applications with nested layouts
-- Need to preserve layout state across navigations
-- Performance is critical (many navigations)
-- Building admin panels, dashboards, multi-section apps
-
-**Features**:
-- ✓ Layout chain management
-- ✓ Pivot algorithm for efficient reuse
-- ✓ Component lifecycle hooks
-- ✓ Memory-efficient instance tracking
-- ✓ Slot parent tracking
-- ✓ AppShell pattern support
-- ✓ Route parameter extraction and passing to factories
-
-**API**:
-```go
-engine := router.NewEngine(nil)
-engine.RegisterRoutes([]router.Route{
-    {
-        Path: "/admin/settings",
-        Chain: []router.ComponentMetadata{
-            {Factory: func(params map[string]string) runtime.Component { return mainLayout }, TypeID: MainLayout_TypeID},
-            {Factory: func(params map[string]string) runtime.Component { return adminLayout }, TypeID: AdminLayout_TypeID},
-            {Factory: func(params map[string]string) runtime.Component { return &SettingsPage{} }, TypeID: SettingsPage_TypeID},
-        },
-    },
-})
-engine.Start(func(chain []runtime.Component, key string) {
-    appShell.SetPage(chain, key)
-})
-```
-
-**Every navigation**: Only components after pivot destroyed/recreated.
-
-### Choosing Between Them
-
-| Factor | Basic Router | Engine |
-|--------|-------------|---------|
-| App Complexity | Simple (< 10 pages) | Complex (10+ pages, sections) |
-| Nested Layouts | No | Yes (multi-level) |
-| Layout State | Not preserved | Preserved (before pivot) |
-| Performance | Good | Excellent |
-| Learning Curve | Low | Moderate |
-| Code Boilerplate | Minimal | More (TypeIDs, chains) |
-| Future-Proof | For simple apps | For growing apps |
-
-**Recommendation**: Start with Basic Router, migrate to Engine when you need:
-- Admin panel with persistent sidebar
-- Multi-section app (blog + shop + admin)
-- Complex navigation trees (3+ layout levels)
-- Maximum performance for frequent navigation
-
 ---
 
 ## Conclusion
 
-The **Router Engine** implements a sophisticated layout management system:
+The **Router Engine** implements a sophisticated layout management system for the No-JS framework:
 
 **Core innovations**:
 1. **Pivot Algorithm**: Precisely determines which components to preserve vs recreate

@@ -1,222 +1,405 @@
-//go:build js && wasm
+//go:build js || wasm
 
 package router
 
 import (
+	"fmt"
 	"strings"
+	"sync"
 	"syscall/js"
 
 	"github.com/vcrobe/nojs/console"
 	"github.com/vcrobe/nojs/runtime"
+	"github.com/vcrobe/nojs/vdom"
 )
 
-// RoutingMode defines how URLs are managed by the router.
-type RoutingMode int
-
-const (
-	// PathMode uses HTML5 History API with clean URLs like /about
-	// Requires server configuration to serve index.html for all routes.
-	PathMode RoutingMode = iota
-
-	// HashMode uses hash-based URLs like #/about
-	// Works without server configuration (good for static hosting).
-	HashMode
-)
-
-// RouteHandler is a function that creates a component instance for a route.
-// It receives URL parameters extracted from the path (e.g., {id} in /users/{id}).
-type RouteHandler func(params map[string]string) runtime.Component
-
-// routeDefinition holds the internal representation of a registered route.
-type routeDefinition struct {
-	Path    string // e.g., "/users/{id}"
-	Handler RouteHandler
-}
-
-// Router implements the runtime.NavigationManager interface.
-// It handles client-side routing with support for both path-based and hash-based modes.
-type Router struct {
-	routes           []routeDefinition
-	onChange         func(runtime.Component, string) // Second parameter is the path/key
-	mode             RoutingMode
-	notFoundHandler  RouteHandler
+// Engine manages routing with the app shell pattern and pivot-based layout reuse.
+// It preserves layout instances across navigations when the layout chain matches.
+type Engine struct {
+	mu               sync.Mutex
+	currentPath      string
+	currentRoute     *Route
+	activeChain      []ComponentMetadata
+	liveInstances    []runtime.Component // Parallel to activeChain; instances are reused
+	pivotPoint       int                 // First index where chain differs between routes
+	routes           map[string]*Route
+	renderer         runtime.Renderer
+	onRouteChange    func(chain []runtime.Component, key string)
 	popstateListener js.Func
 }
 
-// Config holds configuration options for the router.
-type Config struct {
-	Mode RoutingMode // PathMode or HashMode
-}
-
-// New creates a new Router with the given configuration.
-// If config is nil, defaults to PathMode.
-func New(config *Config) *Router {
-	mode := PathMode
-	if config != nil {
-		mode = config.Mode
-	}
-
-	return &Router{
-		routes: make([]routeDefinition, 0),
-		mode:   mode,
+// New creates a new router engine.
+// The renderer can be set later via SetRenderer if needed.
+func NewEngine(renderer runtime.Renderer) *Engine {
+	return &Engine{
+		routes:        make(map[string]*Route),
+		renderer:      renderer,
+		liveInstances: make([]runtime.Component, 0, 4),
 	}
 }
 
-// Handle registers a route with its handler function.
-// The path can contain parameters in curly braces, e.g., "/users/{id}".
-//
-// Example:
-//
-//	router.Handle("/", func(p map[string]string) runtime.Component {
-//	    return &HomePage{}
-//	})
-//	router.Handle("/users/{id}", func(p map[string]string) runtime.Component {
-//	    return &UserPage{UserID: p["id"]}
-//	})
-func (r *Router) Handle(path string, handler RouteHandler) {
-	r.routes = append(r.routes, routeDefinition{
-		Path:    path,
-		Handler: handler,
-	})
+// SetRenderer sets the renderer on the engine (used after engine creation).
+func (e *Engine) SetRenderer(renderer runtime.Renderer) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.renderer = renderer
 }
 
-// HandleNotFound registers a handler for 404 (not found) cases.
-// This handler is called when no route matches the current path.
-//
-// Example:
-//
-//	router.HandleNotFound(func(p map[string]string) runtime.Component {
-//	    return &NotFoundPage{}
-//	})
-func (r *Router) HandleNotFound(handler RouteHandler) {
-	r.notFoundHandler = handler
+// RegisterRoutes adds routes to the engine.
+// Routes are keyed by their Path for O(1) lookup.
+func (e *Engine) RegisterRoutes(routes []Route) {
+	for i := range routes {
+		e.routes[routes[i].Path] = &routes[i]
+	}
 }
 
-// Start implements runtime.NavigationManager.Start().
-// It initializes the router by reading the initial URL, setting up browser
-// event listeners, and calling the onChange callback with the initial component.
-func (r *Router) Start(onChange func(runtime.Component, string)) error {
-	r.onChange = onChange
+// SetRouteChangeCallback sets the callback invoked when navigation occurs.
+// The callback is passed the chain of component instances (from pivot onwards, including
+// sublayouts and the leaf page) and a unique key for reconciliation.
+func (e *Engine) SetRouteChangeCallback(fn func(chain []runtime.Component, key string)) {
+	e.onRouteChange = fn
+}
 
-	// Listen for browser back/forward button clicks
-	r.popstateListener = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		r.handlePathChange()
+// Navigate changes the current route and triggers appropriate updates.
+// It uses the pivot algorithm to determine which layouts can be preserved.
+// If skipPushState is true, the URL won't be updated (used for popstate events).
+func (e *Engine) Navigate(path string) error {
+	return e.navigateInternal(path, false)
+}
+
+// navigateInternal handles the navigation logic with optional skipPushState flag.
+func (e *Engine) navigateInternal(path string, skipPushState bool) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	console.Log("[Engine.Navigate] Called with path:", path)
+
+	if path == "" {
+		console.Warn("[Engine.Navigate] The path is empty string")
+	}
+
+	console.Log("[Engine.Navigate] Current path:", e.currentPath)
+
+	targetRoute := e.findMatchingRoute(path)
+	if targetRoute == nil {
+		console.Error("[Engine.Navigate] No route found for path:", path)
+		return fmt.Errorf("no route for path: %s", path)
+	}
+
+	console.Log("[Engine.Navigate] Route found")
+
+	// Update browser history using pushState (unless this is a popstate navigation)
+	if !skipPushState {
+		console.Log("[Engine.Navigate] Updating URL with pushState")
+		history := js.Global().Get("history")
+		history.Call("pushState", nil, "", path)
+		console.Log("[Engine.Navigate] URL updated, current location:", js.Global().Get("location").Get("pathname").String())
+	} else {
+		console.Log("[Engine.Navigate] Skipping pushState (popstate event)")
+	}
+
+	// Calculate pivot point: first index where TypeID differs
+	pivot := e.calculatePivot(targetRoute.Chain)
+
+	console.Log("[Engine.Navigate] Pivot point:", pivot, "Chain length:", len(targetRoute.Chain))
+
+	// Extract URL parameters from route pattern
+	params := e.extractParams(targetRoute.Path, path)
+	console.Log("[Engine.Navigate] Extracted params:", fmt.Sprintf("%v", params))
+
+	// Destroy volatile (new) component instances from pivot onwards
+	for i := pivot; i < len(e.liveInstances); i++ {
+		instance := e.liveInstances[i]
+
+		// Clear slot parent reference to break circular references
+		if slotTracking, ok := interface{}(instance).(interface{ SetSlotParent(runtime.Component) }); ok {
+			slotTracking.SetSlotParent(nil)
+		}
+	}
+
+	// Instantiate new chain segment (from pivot onwards)
+	newInstances := make([]runtime.Component, len(targetRoute.Chain))
+
+	// Copy stable instances (before pivot)
+	copy(newInstances[:pivot], e.liveInstances[:pivot])
+
+	// Create new instances from pivot onwards
+	for i := pivot; i < len(targetRoute.Chain); i++ {
+		instance := targetRoute.Chain[i].Factory(params)
+
+		// Inject renderer so component can call StateHasChanged() and Navigate()
+		instance.SetRenderer(e.renderer)
+
+		newInstances[i] = instance
+	}
+
+	// Link chain: inject each child into parent's BodyContent slot
+	// Skip this if using AppShell pattern (onRouteChange callback set) to prevent double-rendering
+	if e.onRouteChange == nil {
+		for i := 0; i < len(newInstances)-1; i++ {
+			parent := newInstances[i]
+			child := newInstances[i+1]
+
+			// Render child to VDOM and inject into parent's slot
+			childVNode := child.Render(e.renderer)
+			if childVNode != nil {
+				// Use duck typing to set slot content - any layout with SetBodyContent method
+				if layout, ok := parent.(interface{ SetBodyContent([]*vdom.VNode) }); ok {
+					layout.SetBodyContent([]*vdom.VNode{childVNode})
+				}
+			}
+
+			// Mark child as being in parent's slot (for scoped re-renders)
+			if slotTracking, ok := interface{}(child).(interface{ SetSlotParent(runtime.Component) }); ok {
+				slotTracking.SetSlotParent(parent)
+			}
+		}
+	}
+
+	// Notify route change callback to update AppShell state.
+	// AppShell.SetPage will call StateHasChanged() to trigger a re-render.
+	// The RenderChild mechanism ensures layouts are reused efficiently,
+	// and VDOM patching only updates what actually changed.
+	if e.onRouteChange != nil {
+		// Pass the full chain to AppShell so it can handle all layers correctly
+		// This includes the root layout, any preserved sublayouts, and new components
+		key := fmt.Sprintf("%s:%d", path, pivot) // Unique key includes pivot for reconciliation
+		console.Log("[Engine.Navigate] Calling onRouteChange with", len(newInstances), "components, key:", key)
+		e.onRouteChange(newInstances, key)
+		console.Log("[Engine.Navigate] AppShell will handle rendering via StateHasChanged")
+
+		// Update state and return - AppShell's StateHasChanged handles the rendering
+		e.currentPath = path
+		e.currentRoute = targetRoute
+		e.activeChain = targetRoute.Chain
+		e.liveInstances = newInstances
+		e.pivotPoint = pivot
 		return nil
-	})
-	js.Global().Set("onpopstate", r.popstateListener)
+	}
+	// Fallback: if no callback (non-AppShell apps), do scoped update
+	// Trigger update at pivot boundary
+	if pivot > 0 {
+		// Scoped update: parent layout re-renders with new slot content
+		// Only the slot subtree is diffed/patched (efficient!)
+		e.renderer.ReRenderSlot(newInstances[pivot-1])
+	} else {
+		// Full re-render: new root layout
+		e.renderer.ReRender()
+	}
 
-	// Handle the initial page load (read current URL and render component)
-	r.handlePathChange()
+	// Update state
+	e.currentPath = path
+	e.currentRoute = targetRoute
+	e.activeChain = targetRoute.Chain
+	e.liveInstances = newInstances
+	e.pivotPoint = pivot
+
 	return nil
 }
 
-// Navigate implements runtime.NavigationManager.Navigate().
-// It changes the browser URL and renders the new component without a full page reload.
-func (r *Router) Navigate(path string) error {
-	if r.mode == PathMode {
-		// Use HTML5 History API
-		js.Global().Get("history").Call("pushState", nil, "", path)
-	} else {
-		// Use hash navigation
-		js.Global().Get("location").Set("hash", path)
+// calculatePivot finds the first index where current and target chains differ by TypeID.
+// All components before the pivot point have matching TypeIDs and are preserved.
+// All components at or after the pivot point are recreated.
+func (e *Engine) calculatePivot(targetChain []ComponentMetadata) int {
+	minLen := len(e.activeChain)
+	if len(targetChain) < minLen {
+		minLen = len(targetChain)
 	}
 
-	r.handlePathChange()
+	// Compare TypeIDs from root to leaf
+	for i := 0; i < minLen; i++ {
+		if e.activeChain[i].TypeID != targetChain[i].TypeID {
+			return i // First mismatch is pivot point
+		}
+	}
+
+	// All matched up to shorter chain length
+	return minLen
+}
+
+// findMatchingRoute searches for a route that matches the given path.
+// It iterates through all registered routes and checks if the pattern matches.
+// Returns nil if no matching route is found.
+func (e *Engine) findMatchingRoute(path string) *Route {
+	for _, route := range e.routes {
+		if e.matchesPattern(route.Path, path) {
+			return route
+		}
+	}
 	return nil
 }
 
-// GetComponentForPath implements runtime.NavigationManager.GetComponentForPath().
-// It matches the path against registered routes and returns the corresponding component.
-func (r *Router) GetComponentForPath(path string) (runtime.Component, bool) {
-	for _, route := range r.routes {
-		params, matched := r.matchRoute(route.Path, path)
-		if matched {
-			return route.Handler(params), true
+// matchesPattern checks if an actual path matches a route pattern.
+// The pattern can contain parameters in curly braces, e.g., "/blog/{year}".
+// Returns true if the path matches the pattern.
+//
+// Examples:
+//
+//	matchesPattern("/blog/{year}", "/blog/2026") returns true
+//	matchesPattern("/blog/{year}", "/blog/2026/extras") returns false
+//	matchesPattern("/users/{id}/posts/{postId}", "/users/42/posts/100") returns true
+func (e *Engine) matchesPattern(pattern, path string) bool {
+	// Normalize paths (remove trailing slashes for comparison)
+	pattern = strings.TrimSuffix(pattern, "/")
+	path = strings.TrimSuffix(path, "/")
+
+	// Handle root path specially
+	if pattern == "" {
+		pattern = "/"
+	}
+	if path == "" {
+		path = "/"
+	}
+
+	// Exact match for simple paths
+	if pattern == path {
+		return true
+	}
+
+	// Split into segments
+	patternParts := strings.Split(strings.Trim(pattern, "/"), "/")
+	pathParts := strings.Split(strings.Trim(path, "/"), "/")
+
+	// Must have same number of segments
+	if len(patternParts) != len(pathParts) {
+		return false
+	}
+
+	// Check each segment
+	for i := range patternParts {
+		patternSegment := patternParts[i]
+		pathSegment := pathParts[i]
+
+		// Check if this is a parameter placeholder
+		if strings.HasPrefix(patternSegment, "{") && strings.HasSuffix(patternSegment, "}") {
+			// This is a parameter - it matches any value
+			continue
+		}
+
+		// Not a parameter - must match exactly
+		if patternSegment != pathSegment {
+			return false
 		}
 	}
-	return nil, false
+
+	return true
 }
 
-// handlePathChange is called whenever the URL changes (programmatically or via browser navigation).
-// It determines which component to render and calls the onChange callback.
-func (r *Router) handlePathChange() {
-	path := r.getCurrentPath()
-
-	comp, found := r.GetComponentForPath(path)
-	if found && r.onChange != nil {
-		r.onChange(comp, path) // Pass path as key
-	} else if !found && r.notFoundHandler != nil {
-		// Call 404 handler
-		r.onChange(r.notFoundHandler(nil), path)
-	} else if r.onChange != nil {
-		// No route found and no 404 handler configured
-		console.Warn("[Router] No route found for path: '%s'\n", path)
-	}
-}
-
-// getCurrentPath returns the current path based on the routing mode.
-func (r *Router) getCurrentPath() string {
-	if r.mode == PathMode {
-		return js.Global().Get("location").Get("pathname").String()
-	} else {
-		// Hash mode: extract path after the #
-		hash := js.Global().Get("location").Get("hash").String()
-		if len(hash) > 1 && hash[0] == '#' {
-			return hash[1:] // Remove the # prefix
-		}
-		return "/"
-	}
-}
-
-// matchRoute checks if a URL path matches a route pattern and extracts parameters.
-// Returns (params, true) if matched, or (nil, false) if not matched.
+// extractParams parses URL parameters from a path based on route pattern.
+// Returns a map of parameter names to their values extracted from the URL.
 //
 // Example:
 //
-//	matchRoute("/users/{id}", "/users/123") returns ({"id": "123"}, true)
-//	matchRoute("/about", "/about") returns ({}, true)
-//	matchRoute("/about", "/contact") returns (nil, false)
-func (r *Router) matchRoute(routePath, urlPath string) (map[string]string, bool) {
+//	extractParams("/blog/{year}", "/blog/2026") returns {"year": "2026"}
+//	extractParams("/users/{id}/posts/{postId}", "/users/42/posts/100") returns {"id": "42", "postId": "100"}
+func (e *Engine) extractParams(routePath, actualPath string) map[string]string {
 	// Normalize paths (remove trailing slashes for comparison)
 	routePath = strings.TrimSuffix(routePath, "/")
-	urlPath = strings.TrimSuffix(urlPath, "/")
+	actualPath = strings.TrimSuffix(actualPath, "/")
 
 	// Handle root path specially
 	if routePath == "" {
 		routePath = "/"
 	}
-	if urlPath == "" {
-		urlPath = "/"
+	if actualPath == "" {
+		actualPath = "/"
 	}
 
 	routeParts := strings.Split(strings.Trim(routePath, "/"), "/")
-	urlParts := strings.Split(strings.Trim(urlPath, "/"), "/")
-
-	// Paths must have the same number of segments to match
-	if len(routeParts) != len(urlParts) {
-		return nil, false
-	}
+	actualParts := strings.Split(strings.Trim(actualPath, "/"), "/")
 
 	params := make(map[string]string)
 
+	// Extract parameters from matching segments
 	for i := range routeParts {
+		if i >= len(actualParts) {
+			break
+		}
 		if strings.HasPrefix(routeParts[i], "{") && strings.HasSuffix(routeParts[i], "}") {
-			// This is a parameter placeholder
+			// This is a parameter placeholder - extract the parameter name and value
 			paramName := strings.Trim(routeParts[i], "{}")
-			params[paramName] = urlParts[i]
-		} else if routeParts[i] != urlParts[i] {
-			// Static segment doesn't match
-			return nil, false
+			params[paramName] = actualParts[i]
 		}
 	}
 
-	return params, true
+	return params
 }
 
-// Cleanup releases resources held by the router.
-// Call this when the router is no longer needed.
-func (r *Router) Cleanup() {
-	if !r.popstateListener.IsUndefined() {
-		r.popstateListener.Release()
+// CurrentPath returns the current route path.
+func (e *Engine) CurrentPath() string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.currentPath
+}
+
+// CurrentPivotPoint returns the pivot point from the last navigation.
+func (e *Engine) CurrentPivotPoint() int {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.pivotPoint
+}
+
+// Start initializes the router and handles browser history.
+// The onChange callback is invoked when navigation occurs to update the renderer's
+// current component. This implements the NavigationManager interface.
+func (e *Engine) Start(onChange func(chain []runtime.Component, key string)) error {
+	e.mu.Lock()
+	e.onRouteChange = onChange
+	e.mu.Unlock()
+
+	// Set up popstate listener for browser back/forward buttons
+	e.popstateListener = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		console.Log("[Engine] popstate event fired")
+		// Read current path from browser
+		currentPath := js.Global().Get("location").Get("pathname").String()
+		console.Log("[Engine] popstate path:", currentPath)
+		// Navigate without pushing state (URL already changed)
+		e.navigateInternal(currentPath, true)
+		return nil
+	})
+	js.Global().Call("addEventListener", "popstate", e.popstateListener)
+	console.Log("[Engine] popstate listener registered")
+
+	// Navigate to the current browser path on initial load
+	initialPath := js.Global().Get("location").Get("pathname").String()
+	console.Log("[Engine.Start] Initial path:", initialPath)
+	if initialPath == "" {
+		initialPath = "/"
+	}
+	return e.Navigate(initialPath)
+}
+
+// GetComponentForPath resolves a URL path to its component.
+// This implements the NavigationManager interface.
+// Returns the leaf component (page) for the route, or nil if not found.
+func (e *Engine) GetComponentForPath(path string) (runtime.Component, bool) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	targetRoute, ok := e.routes[path]
+	if !ok {
+		return nil, false
+	}
+
+	if len(targetRoute.Chain) == 0 {
+		return nil, false
+	}
+
+	// Extract URL parameters from route pattern
+	params := e.extractParams(targetRoute.Path, path)
+
+	// Return the leaf component (last in chain)
+	// Create a new instance to return
+	leaf := targetRoute.Chain[len(targetRoute.Chain)-1]
+	return leaf.Factory(params), true
+}
+
+// Cleanup releases resources held by the engine.
+// Call this when the engine is no longer needed to prevent memory leaks.
+func (e *Engine) Cleanup() {
+	if !e.popstateListener.IsUndefined() {
+		js.Global().Call("removeEventListener", "popstate", e.popstateListener)
+		e.popstateListener.Release()
+		console.Log("[Engine] popstate listener cleaned up")
 	}
 }

@@ -2,9 +2,11 @@
 
 ## Overview
 
-The No-JS framework implements a **pluggable, router-agnostic architecture** for client-side routing. The router integrates seamlessly with the Virtual DOM (VDOM) and component lifecycle system to enable Single Page Application (SPA) navigation without full page reloads.
+The No-JS framework implements a sophisticated **Router Engine** for client-side routing with layout chain management and pivot-based component reuse. The router integrates seamlessly with the Virtual DOM (VDOM) and component lifecycle system to enable Single Page Application (SPA) navigation without full page reloads.
 
-This document covers all technical details of the router implementation, including architecture decisions, integration patterns, event handling, and VDOM patching challenges.
+The Router Engine uses **HTML5 History API** with clean URLs like `/about` and `/users/123`, requiring server configuration to serve `index.html` for all routes.
+
+This document covers the router's integration patterns, event handling, and VDOM patching challenges. For detailed information about layout hierarchies, the pivot algorithm, and the AppShell pattern, see [ROUTER_ENGINE_LAYOUTS.md](ROUTER_ENGINE_LAYOUTS.md).
 
 ---
 
@@ -12,17 +14,15 @@ This document covers all technical details of the router implementation, includi
 
 1. [Architecture and Design Principles](#architecture-and-design-principles)
 2. [Core Interfaces](#core-interfaces)
-3. [Router Implementation](#router-implementation)
-4. [Routing Modes](#routing-modes)
-5. [Route Matching and Parameter Extraction](#route-matching-and-parameter-extraction)
-6. [Integration with Renderer](#integration-with-renderer)
-7. [Component Navigation](#component-navigation)
-8. [Event System Integration](#event-system-integration)
-9. [VDOM Event Listener Management](#vdom-event-listener-management)
-10. [Browser History Integration](#browser-history-integration)
-11. [Lifecycle and Initialization](#lifecycle-and-initialization)
-12. [Usage Examples](#usage-examples)
-13. [Technical Challenges and Solutions](#technical-challenges-and-solutions)
+3. [Route Matching and Parameter Extraction](#route-matching-and-parameter-extraction)
+4. [Integration with Renderer](#integration-with-renderer)
+5. [Component Navigation](#component-navigation)
+6. [Event System Integration](#event-system-integration)
+7. [VDOM Event Listener Management](#vdom-event-listener-management)
+8. [Browser History Integration](#browser-history-integration)
+9. [Lifecycle and Initialization](#lifecycle-and-initialization)
+10. [Usage Examples](#usage-examples)
+11. [Technical Challenges and Solutions](#technical-challenges-and-solutions)
 
 ---
 
@@ -34,7 +34,7 @@ The router architecture follows three key principles:
 
 1. **Router Agnostic**: The framework core (`runtime` package) doesn't depend on any specific router implementation
 2. **Pluggable**: Any router that implements the `NavigationManager` interface can be used
-3. **Unopinionated**: Supports multiple routing strategies (path-based, hash-based) without prescribing one approach
+3. **Layout-Aware**: The Engine preserves layout component instances across navigations using the pivot algorithm
 
 ### Separation of Concerns
 
@@ -48,7 +48,7 @@ The router architecture follows three key principles:
          │                  │
          ▼                  ▼
 ┌────────────────┐   ┌──────────────┐
-│    Router      │   │   Renderer   │
+│ Router Engine  │   │   Renderer   │
 │   (router/)    │◄──┤  (runtime/)  │
 └────────────────┘   └──────┬───────┘
          │                   │
@@ -61,7 +61,7 @@ The router architecture follows three key principles:
          ▼
 ┌────────────────┐
 │  Browser APIs  │
-│ (History/Hash) │
+│ (History API)  │
 └────────────────┘
 ```
 
@@ -114,114 +114,15 @@ This chain allows components to trigger navigation without direct coupling to th
 
 ---
 
-## Router Implementation
-
-### Router Structure
-
-Located in `router/router.go`:
-
-```go
-type Router struct {
-    routes           []routeDefinition
-    onChange         func(runtime.Component, string) // Second parameter is path/key
-    mode             RoutingMode
-    notFoundHandler  RouteHandler
-    popstateListener js.Func
-}
-
-type routeDefinition struct {
-    Path    string       // e.g., "/users/{id}"
-    Handler RouteHandler // func(params map[string]string) runtime.Component
-}
-
-type RouteHandler func(params map[string]string) runtime.Component
-```
-
-**Design Notes**:
-- `RouteHandler` is a factory function that creates component instances
-- Handlers receive extracted URL parameters (e.g., `{id}` becomes `params["id"]`)
-- `popstateListener` is a `js.Func` that must be properly released to avoid memory leaks
-
-### Route Registration
-
-Routes are registered via `Handle()`:
-
-```go
-appRouter.Handle("/users/{id}", func(params map[string]string) runtime.Component {
-    return &UserPage{UserID: params["id"]}
-})
-```
-
-**Important**: Route handlers are called on **every navigation** to create fresh component instances. This ensures clean state for each route. Route handlers receive extracted URL parameters as a map.
-
-### 404 Handling
-
-Optional not-found handler:
-
-```go
-appRouter.HandleNotFound(func(params map[string]string) runtime.Component {
-    return &NotFoundPage{}
-})
-```
-
-If no handler is registered and no route matches, the router prints a warning but doesn't crash.
-
----
-
-## Routing Modes
-
-### PathMode (Default)
-
-Uses the **HTML5 History API** with clean URLs:
-
-```
-https://example.com/about
-https://example.com/users/123
-```
-
-**Browser API Used**: `history.pushState()`
-
-**Server Requirement**: Server must be configured to serve `index.html` for all routes (SPA fallback).
-
-**Example Server Configs**:
-- **Go http.FileServer**: Use `http.StripPrefix` with custom fallback handler
-- **Nginx**: `try_files $uri /index.html`
-- **Apache**: `RewriteRule` to `index.html`
-
-### HashMode
-
-Uses hash-based URLs (no server config needed):
-
-```
-https://example.com/#/about
-https://example.com/#/users/123
-```
-
-**Browser API Used**: `location.hash`
-
-**Advantages**:
-- Works with static file hosting (GitHub Pages, S3, etc.)
-- No server configuration required
-- Browser natively handles hash navigation
-
-**Implementation**:
-
-```go
-appRouter := router.New(&router.Config{Mode: router.HashMode})
-```
-
-The router automatically strips the `#` prefix when parsing paths.
-
----
-
 ## Route Matching and Parameter Extraction
 
 ### Pattern Matching
 
-The `matchRoute()` function handles pattern matching with parameter extraction:
+The Router Engine's `matchesPattern()` and `extractParams()` functions handle pattern matching with parameter extraction:
 
 ```go
-func (r *Router) matchRoute(routePath, urlPath string) (map[string]string, bool)
+func (e *Engine) matchesPattern(pattern, path string) bool
+func (e *Engine) extractParams(routePath, actualPath string) map[string]string
 ```
 
 **Algorithm**:
@@ -232,26 +133,26 @@ func (r *Router) matchRoute(routePath, urlPath string) (map[string]string, bool)
 4. **Segment-by-segment comparison**:
    - Static segments must match exactly
    - Dynamic segments (wrapped in `{}`) capture the URL value
-5. **Return** extracted parameters and match status
+5. **Return** extracted parameters
 
 **Examples**:
 
 ```go
 // Static route
-matchRoute("/about", "/about") 
-→ (map[]{}, true)
+matchesPattern("/about", "/about") → true
+extractParams("/about", "/about") → map[]{}
 
 // Dynamic route
-matchRoute("/users/{id}", "/users/123") 
-→ (map["id": "123"], true)
+matchesPattern("/users/{id}", "/users/123") → true
+extractParams("/users/{id}", "/users/123") → map["id": "123"]
 
 // Multi-parameter route
-matchRoute("/posts/{year}/{month}/{slug}", "/posts/2024/11/hello") 
-→ (map["year": "2024", "month": "11", "slug": "hello"], true)
+matchesPattern("/posts/{year}/{month}/{slug}", "/posts/2024/11/hello") → true
+extractParams("/posts/{year}/{month}/{slug}", "/posts/2024/11/hello") 
+  → map["year": "2024", "month": "11", "slug": "hello"]
 
 // No match
-matchRoute("/about", "/contact") 
-→ (nil, false)
+matchesPattern("/about", "/contact") → false
 ```
 
 ### Parameter Constraints
@@ -273,35 +174,39 @@ matchRoute("/about", "/contact")
 
 ### Renderer Initialization
 
-The renderer accepts an optional `NavigationManager`:
+The renderer accepts a `NavigationManager` (the Router Engine):
 
 ```go
-renderer := runtime.NewRenderer(appRouter, "#app")
+routerEngine := router.NewEngine(nil)
+renderer := runtime.NewRenderer(routerEngine, "#app")
+routerEngine.SetRenderer(renderer)
 ```
 
-If `nil` is passed, the renderer works without routing (useful for non-SPA apps or embedded components).
+If `nil` is passed as the navigation manager, the renderer works without routing (useful for non-SPA apps or embedded components).
 
 ### onChange Callback
 
-The application defines how to respond to navigation:
+The application defines how to respond to navigation using the Engine's callback:
 
 ```go
-onRouteChange := func(newComponent runtime.Component, path string) {
-    renderer.SetCurrentComponent(newComponent, path)
-    renderer.ReRender()
-}
-
-appRouter.Start(onRouteChange)
+routerEngine.Start(func(chain []runtime.Component, key string) {
+    appShell.SetPage(chain, key)
+})
 ```
+
+With the Engine, the callback receives:
+- `chain`: Array of component instances (from pivot onwards, including preserved layouts and new components)
+- `key`: Unique identifier for the navigation (typically `path:pivotIndex`)
 
 **Execution Flow**:
 
 ```
-URL Change → Router.handlePathChange() 
-          → GetComponentForPath() 
-          → RouteHandler(params) 
-          → onChange(newComponent, path) 
-          → Renderer.SetCurrentComponent() 
+URL Change → Engine.navigateInternal() 
+          → calculatePivot() 
+          → Instantiate new components from pivot
+          → onChange(chain, key) 
+          → AppShell.SetPage() 
+          → AppShell.StateHasChanged()
           → Renderer.ReRender()
           → VDOM Patching
 ```
@@ -593,22 +498,29 @@ func attachEventListeners(domElement js.Value, attributes map[string]any) {
 
 ### Popstate Event Listener
 
-The router listens for browser back/forward button clicks:
+The Router Engine listens for browser back/forward button clicks:
 
 ```go
-func (r *Router) Start(onChange func(runtime.Component, string)) error {
-    r.onChange = onChange
-
-    // Register popstate listener
-    r.popstateListener = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-        r.handlePathChange()
+func (e *Engine) Start(onChange func(chain []runtime.Component, key string)) error {
+    e.onRouteChange = onChange
+    
+    // Set up popstate listener for browser back/forward buttons
+    e.popstateListener = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+        console.Log("[Engine] popstate event fired")
+        // Read current path from browser
+        currentPath := js.Global().Get("location").Get("pathname").String()
+        // Navigate without pushing state (URL already changed)
+        e.navigateInternal(currentPath, true)
         return nil
     })
-    js.Global().Set("onpopstate", r.popstateListener)
-
-    // Handle initial page load
-    r.handlePathChange()
-    return nil
+    js.Global().Call("addEventListener", "popstate", e.popstateListener)
+    
+    // Navigate to the current browser path on initial load
+    initialPath := js.Global().Get("location").Get("pathname").String()
+    if initialPath == "" {
+        initialPath = "/"
+    }
+    return e.Navigate(initialPath)
 }
 ```
 
@@ -616,20 +528,22 @@ func (r *Router) Start(onChange func(runtime.Component, string)) error {
 
 ```
 User clicks back button → Browser fires 'popstate' event 
-                       → Router.handlePathChange() 
-                       → GetComponentForPath(currentURL) 
-                       → onChange(newComponent, path) 
-                       → Renderer re-renders
+                       → Engine.navigateInternal(path, skipPushState=true)
+                       → calculatePivot()
+                       → Instantiate components from pivot
+                       → onChange(chain, key) 
+                       → AppShell updates and re-renders
 ```
 
 ### Cleanup
 
-The router provides cleanup to release the listener:
+The Engine provides cleanup to release the listener:
 
 ```go
-func (r *Router) Cleanup() {
-    if !r.popstateListener.IsUndefined() {
-        r.popstateListener.Release()
+func (e *Engine) Cleanup() {
+    if !e.popstateListener.IsUndefined() {
+        js.Global().Call("removeEventListener", "popstate", e.popstateListener)
+        e.popstateListener.Release()
     }
 }
 ```
@@ -645,95 +559,155 @@ func (r *Router) Cleanup() {
 
 ### Application Startup Sequence
 
-1. **main.go**: Create router with config
-2. **main.go**: Register routes via `Handle()`
-3. **main.go**: Create renderer with router
-4. **main.go**: Define `onRouteChange` callback
-5. **main.go**: Call `appRouter.Start(onRouteChange)`
-6. **Router**: Read initial browser URL
-7. **Router**: Call `handlePathChange()`
-8. **Router**: Match route and create component
-9. **Router**: Call `onChange(component, path)`
-10. **Renderer**: Call `SetCurrentComponent(component, path)`
-11. **Renderer**: Call `ReRender()`
-12. **Renderer**: Inject renderer reference into component via `SetRenderer()`
-13. **Renderer**: Call component lifecycle methods (`OnInit`, `OnParametersSet`)
-14. **Renderer**: Call `component.Render()`
-15. **VDOM**: Render initial DOM
-16. **Application**: Enter event loop (`select {}`)
+1. **main.go**: Create context and persistent layout instances
+2. **main.go**: Create Router Engine with `router.NewEngine(nil)`
+3. **main.go**: Create renderer with `runtime.NewRenderer(routerEngine, "#app")`
+4. **main.go**: Set renderer on engine with `routerEngine.SetRenderer(renderer)`
+5. **main.go**: Register routes via `routerEngine.RegisterRoutes([]router.Route{...})`
+6. **main.go**: Create AppShell wrapping the main layout
+7. **main.go**: Set AppShell as current component
+8. **main.go**: Call `routerEngine.Start(func(chain, key) { appShell.SetPage(chain, key) })`
+9. **Engine**: Read initial browser URL
+10. **Engine**: Call `Navigate(initialPath)`
+11. **Engine**: Calculate pivot (0 for initial load)
+12. **Engine**: Instantiate component chain
+13. **Engine**: Call `onChange(chain, key)`
+14. **AppShell**: Call `SetPage()` and `StateHasChanged()`
+15. **Renderer**: Call `ReRender()`
+16. **Renderer**: Inject renderer reference into components via `SetRenderer()`
+17. **Renderer**: Call component lifecycle methods (`OnMount`)
+18. **Renderer**: Call `component.Render()` for each component
+19. **VDOM**: Render initial DOM
+20. **Application**: Enter event loop (`select {}`)
 
 ### Navigation Sequence
 
 1. **User action**: Call `component.Navigate()` from an event handler
 2. **ComponentBase.Navigate()**: Delegate to `renderer.Navigate()`
-3. **Renderer.Navigate()**: Delegate to `router.Navigate()`
-4. **Router.Navigate()**: Call `history.pushState()` or set `location.hash`
-5. **Router.Navigate()**: Call `handlePathChange()`
-6. **Router.handlePathChange()**: Match path and create component
-8. **Router.handlePathChange()**: Call `onChange(newComponent, path)`
-9. **Renderer**: Call `SetCurrentComponent(component, path)` and `ReRender()`
-9. **Renderer**: Call component lifecycle methods
-10. **VDOM**: Patch DOM with minimal changes
-11. **VDOM**: Clone elements with event handlers
-12. **VDOM**: Attach fresh event listeners
+3. **Renderer.Navigate()**: Delegate to `engine.Navigate()`
+4. **Engine.Navigate()**: Call `history.pushState()`
+5. **Engine.navigateInternal()**: Match route and calculate pivot
+6. **Engine**: Destroy components at or after pivot (call `OnUnmount()`)
+7. **Engine**: Copy preserved instances before pivot
+8. **Engine**: Instantiate new components from pivot onwards
+9. **Engine**: Inject renderer and call `OnMount()` on new components
+10. **Engine**: Call `onChange(chain, key)` with component chain
+11. **AppShell**: Call `SetPage()` and `StateHasChanged()`
+12. **Renderer**: Call `ReRender()` (scoped to AppShell)  
+13. **Renderer**: Call component lifecycle methods
+14. **VDOM**: Patch DOM with minimal changes
+15. **VDOM**: Clone elements with event handlers
+16. **VDOM**: Attach fresh event listeners
 
 ---
 
 ## Usage Examples
 
-### Basic Setup
+### Basic Setup with Engine and AppShell
 
 ```go
 func main() {
-    // Create router
-    appRouter := router.New(&router.Config{Mode: router.PathMode})
+    // Create shared context
+    mainLayoutCtx := &context.MainLayoutCtx{
+        Title: "My App",
+    }
     
-    // Register routes
-    appRouter.Handle("/", func(params map[string]string) runtime.Component {
-        return &HomePage{}
+    // Create persistent main layout instance (app shell)
+    mainLayout := &sharedlayouts.MainLayout{
+        MainLayoutCtx: mainLayoutCtx,
+    }
+    
+    // Create the router engine
+    routerEngine := router.NewEngine(nil)
+    
+    // Create the renderer with the engine
+    renderer := runtime.NewRenderer(routerEngine, "#app")
+    routerEngine.SetRenderer(renderer)
+    
+    // Register routes with layout chains
+    routerEngine.RegisterRoutes([]router.Route{
+        {
+            Path: "/",
+            Chain: []router.ComponentMetadata{
+                {
+                    Factory: func(params map[string]string) runtime.Component { return mainLayout },
+                    TypeID:  MainLayout_TypeID,
+                },
+                {
+                    Factory: func(params map[string]string) runtime.Component { return &HomePage{} },
+                    TypeID:  HomePage_TypeID,
+                },
+            },
+        },
+        {
+            Path: "/about",
+            Chain: []router.ComponentMetadata{
+                {
+                    Factory: func(params map[string]string) runtime.Component { return mainLayout },
+                    TypeID:  MainLayout_TypeID,
+                },
+                {
+                    Factory: func(params map[string]string) runtime.Component { return &AboutPage{} },
+                    TypeID:  AboutPage_TypeID,
+                },
+            },
+        },
     })
     
-    appRouter.Handle("/about", func(params map[string]string) runtime.Component {
-        return &AboutPage{}
-    })
+    // Create AppShell to wrap the router's page rendering
+    appShell := core.NewAppShell(mainLayout)
+    renderer.SetCurrentComponent(appShell, "app-shell")
+    renderer.ReRender()
     
-    // Create renderer
-    renderer := runtime.NewRenderer(appRouter, "#app")
-    
-    // Start router
-    appRouter.Start(func(newComponent runtime.Component, path string) {
-        renderer.SetCurrentComponent(newComponent, path)
-        renderer.ReRender()
+    // Start the router with AppShell callback
+    routerEngine.Start(func(chain []runtime.Component, key string) {
+        appShell.SetPage(chain, key)
     })
     
     select {}
 }
 ```
 
-### Parametric Routes
+### Routes with Parameters
 
 ```go
-appRouter.Handle("/users/{id}", func(params map[string]string) runtime.Component {
-    userID := params["id"]
-    return &UserProfilePage{UserID: userID}
-})
-
-appRouter.Handle("/blog/{year}", func(params map[string]string) runtime.Component {
-    year := 2026 // Default value
-    if yearStr, ok := params["year"]; ok {
-        if parsed, err := strconv.Atoi(yearStr); err == nil {
-            year = parsed
-        }
-    }
-    return &BlogPage{Year: year}
-})
-
-appRouter.Handle("/posts/{year}/{month}/{slug}", func(params map[string]string) runtime.Component {
-    return &BlogPostPage{
-        Year:  params["year"],
-        Month: params["month"],
-        Slug:  params["slug"],
-    }
+routerEngine.RegisterRoutes([]router.Route{
+    {
+        Path: "/users/{id}",
+        Chain: []router.ComponentMetadata{
+            {
+                Factory: func(params map[string]string) runtime.Component { return mainLayout },
+                TypeID:  MainLayout_TypeID,
+            },
+            {
+                Factory: func(params map[string]string) runtime.Component {
+                    return &UserProfilePage{UserID: params["id"]}
+                },
+                TypeID: UserProfilePage_TypeID,
+            },
+        },
+    },
+    {
+        Path: "/blog/{year}",
+        Chain: []router.ComponentMetadata{
+            {
+                Factory: func(params map[string]string) runtime.Component { return mainLayout },
+                TypeID:  MainLayout_TypeID,
+            },
+            {
+                Factory: func(params map[string]string) runtime.Component {
+                    year := 2026 // Default value
+                    if yearStr, ok := params["year"]; ok {
+                        if parsed, err := strconv.Atoi(yearStr); err == nil {
+                            year = parsed
+                        }
+                    }
+                    return &BlogPage{Year: year}
+                },
+                TypeID: BlogPage_TypeID,
+            },
+        },
+    },
 })
 ```
 
@@ -778,18 +752,20 @@ func (a *AboutPage) Render(r *runtime.Renderer) *vdom.VNode {
 
 ### Challenge 3: Preserving Component State Across Navigation
 
+### Challenge 3: Preserving Component State Across Navigation
+
 **Problem**: Creating new component instances on every navigation loses state
 
-**Solution**: The renderer maintains an instance cache (`r.instances`) keyed by component location in the tree. Only the **root component** changes during navigation; child components are reused if they remain in the tree.
+**Solution**: The Router Engine uses the **pivot algorithm** to preserve layout instances. Only components at or after the pivot point are destroyed and recreated; layouts before the pivot are reused, maintaining their complete state.
 
-### Challenge 4: Server Configuration for PathMode
+### Challenge 4: Server Configuration Requirements
 
 **Problem**: Direct URL access (e.g., `example.com/about`) returns 404 without server config
 
 **Solution**: 
-- Document server requirements clearly
-- Provide HashMode as alternative for static hosting
-- Example server configs in documentation
+- Document server requirements clearly (serve `index.html` for all routes)
+- Example server configs in documentation (Nginx, Apache, Go http.FileServer)
+- Error messages guide developers to configure their servers properly
 
 ### Challenge 5: Preventing Memory Leaks from js.Func
 
@@ -798,7 +774,7 @@ func (a *AboutPage) Render(r *runtime.Renderer) *vdom.VNode {
 **Solution**: 
 - **Current**: Cloning elements naturally garbage-collects old listeners
 - **Future**: Implement explicit tracking and release mechanism
-- **Cleanup**: Provide `Router.Cleanup()` for popstate listener
+- **Cleanup**: Provide `Engine.Cleanup()` for popstate listener
 
 ---
 
@@ -815,7 +791,7 @@ func (a *AboutPage) Render(r *runtime.Renderer) *vdom.VNode {
 ### Phase 3: Navigation Guards
 
 ```go
-appRouter.BeforeNavigate(func(from, to string) bool {
+engine.BeforeNavigate(func(from, to string) bool {
     if !user.IsAuthenticated() && isProtectedRoute(to) {
         return false  // Block navigation
     }
@@ -826,19 +802,35 @@ appRouter.BeforeNavigate(func(from, to string) bool {
 ### Phase 4: Route Metadata
 
 ```go
-appRouter.Handle("/admin", handler).WithMeta(map[string]any{
-    "requiresAuth": true,
-    "title": "Admin Panel",
+routerEngine.RegisterRoutes([]router.Route{
+    {
+        Path: "/admin",
+        Chain: adminChain,
+        Meta: map[string]any{
+            "requiresAuth": true,
+            "title": "Admin Panel",
+        },
+    },
 })
 ```
 
 ### Phase 5: Lazy Loading
 
 ```go
-appRouter.Handle("/admin", router.Lazy(func() runtime.Component {
-    // Load admin module on demand
-    return loadAdminModule()
-}))
+routerEngine.RegisterRoutes([]router.Route{
+    {
+        Path: "/admin",
+        Chain: []router.ComponentMetadata{
+            {
+                Factory: func(params map[string]string) runtime.Component {
+                    // Load admin module on demand
+                    return loadAdminModule()
+                },
+                TypeID: AdminModule_TypeID,
+            },
+        },
+    },
+})
 ```
 
 ---
@@ -853,26 +845,30 @@ appRouter.Handle("/admin", router.Lazy(func() runtime.Component {
 
 ### Route Matching
 
-- **Algorithm**: O(n) where n = number of registered routes
+- **Algorithm**: O(n) where n = number of registered routes (linear search through routes map)
 - **Typical usage**: Small number of routes (< 50), negligible impact
 - **Future optimization**: Trie-based matching for large route tables
 
-### Component Instance Caching
+### Component Instance Preservation (Pivot Algorithm)
 
-- **Strategy**: Preserve instances by key across renders
-- **Benefit**: State persistence without re-initialization
-- **Memory**: Instances cleaned up when unmounted via `cleanupUnmountedComponents()`
+- **Strategy**: Calculate pivot point where route chains diverge by TypeID
+- **Benefit**: Layouts before pivot are reused, maintaining state and avoiding re-initialization
+- **Performance**: O(min(currentChain.length, targetChain.length)) comparison, typically O(1) to O(3)
+- **Memory**: Only components after pivot are recreated; preserved instances are just pointer copies
 
 ---
 
 ## Conclusion
 
-The No-JS framework's router architecture achieves its design goals:
+The No-JS framework's Router Engine achieves sophisticated routing with layout management:
 
-✅ **Pluggable**: NavigationManager interface allows custom router implementations  
-✅ **Unopinionated**: Supports both PathMode and HashMode  
-✅ **Integrated**: Seamless VDOM and lifecycle integration  
+✅ **Pluggable**: NavigationManager interface allows alternative router implementations  
+✅ **Layout-Aware**: Pivot algorithm preserves layout state across navigations  
+✅ **Integrated**: Seamless VDOM and lifecycle integration with AppShell pattern  
 ✅ **Correct**: Proper event listener cleanup prevents bugs  
-✅ **Developer-Friendly**: Simple API with clear patterns  
+✅ **Efficient**: Minimal component recreation and scoped VDOM updates  
+✅ **Developer-Friendly**: Type-safe API with compile-time TypeIDs  
 
-The implementation handles the complexities of browser APIs, event management, and VDOM patching while exposing a clean, type-safe API to framework users.
+The Router Engine handles the complexities of browser APIs, layout hierarchies, component lifecycle, event management, and VDOM patching while exposing a clean, type-safe API to framework users.
+
+For detailed information about the pivot algorithm, layout chains, AppShell pattern, and memory management, see [ROUTER_ENGINE_LAYOUTS.md](ROUTER_ENGINE_LAYOUTS.md).
