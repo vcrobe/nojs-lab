@@ -1972,8 +1972,21 @@ func generateNodeCode(n *html.Node, receiver string, componentMap map[string]com
 				return fmt.Sprintf("vdom.Paragraph(%s, %s)", textContent, attrsMapStr)
 			case "button":
 				return fmt.Sprintf("vdom.Button(%s, %s, %s)", textContent, attrsMapStr, childrenStr)
+			case "li":
+				// For li elements, check if there are child components/elements or just text
+				if len(childrenCode) > 0 {
+					// Has component or element children - render them properly
+					if hasForLoop || hasSlotSpread {
+						return fmt.Sprintf("vdom.NewVNode(%s, %s, %s, \"\")", strconv.Quote(tagName), attrsMapStr, strings.TrimSuffix(childrenStr, "..."))
+					} else {
+						return fmt.Sprintf("vdom.NewVNode(%s, %s, []*vdom.VNode{%s}, \"\")", strconv.Quote(tagName), attrsMapStr, childrenStr)
+					}
+				} else {
+					// Only text content - render with text parameter
+					return fmt.Sprintf("vdom.NewVNode(%s, %s, nil, %s)", strconv.Quote(tagName), attrsMapStr, textContent)
+				}
 			default:
-				// For li, h1-h6, use NewVNode directly with text content
+				// For h1-h6, use NewVNode directly with text content
 				return fmt.Sprintf("vdom.NewVNode(%s, %s, nil, %s)", strconv.Quote(tagName), attrsMapStr, textContent)
 			}
 		case "input":
