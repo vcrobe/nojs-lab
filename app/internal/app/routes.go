@@ -3,6 +3,8 @@
 package main
 
 import (
+	"strconv"
+
 	"github.com/vcrobe/app/internal/app/components/pages"
 	"github.com/vcrobe/app/internal/app/components/pages/admin"
 	"github.com/vcrobe/app/internal/app/components/pages/admin/layouts"
@@ -21,11 +23,11 @@ func registerRoutes(routerEngine *router.Engine, mainLayout *sharedlayouts.MainL
 			Path: "/",
 			Chain: []router.ComponentMetadata{
 				{
-					Factory: func() runtime.Component { return mainLayout },
+					Factory: func(params map[string]string) runtime.Component { return mainLayout },
 					TypeID:  MainLayout_TypeID,
 				},
 				{
-					Factory: func() runtime.Component { return &pages.HomePage{MainLayoutCtx: mainLayoutCtx} },
+					Factory: func(params map[string]string) runtime.Component { return &pages.HomePage{MainLayoutCtx: mainLayoutCtx} },
 					TypeID:  HomePage_TypeID,
 				},
 			},
@@ -34,11 +36,11 @@ func registerRoutes(routerEngine *router.Engine, mainLayout *sharedlayouts.MainL
 			Path: "/about",
 			Chain: []router.ComponentMetadata{
 				{
-					Factory: func() runtime.Component { return mainLayout },
+					Factory: func(params map[string]string) runtime.Component { return mainLayout },
 					TypeID:  MainLayout_TypeID,
 				},
 				{
-					Factory: func() runtime.Component { return &pages.AboutPage{} },
+					Factory: func(params map[string]string) runtime.Component { return &pages.AboutPage{} },
 					TypeID:  AboutPage_TypeID,
 				},
 			},
@@ -47,12 +49,17 @@ func registerRoutes(routerEngine *router.Engine, mainLayout *sharedlayouts.MainL
 			Path: "/blog/{year}",
 			Chain: []router.ComponentMetadata{
 				{
-					Factory: func() runtime.Component { return mainLayout },
+					Factory: func(params map[string]string) runtime.Component { return mainLayout },
 					TypeID:  MainLayout_TypeID,
 				},
 				{
-					Factory: func() runtime.Component {
-						year := 2026 // Default, would be extracted from URL in real implementation
+					Factory: func(params map[string]string) runtime.Component {
+						year := 2026 // Default value
+						if yearStr, ok := params["year"]; ok {
+							if parsed, err := strconv.Atoi(yearStr); err == nil {
+								year = parsed
+							}
+						}
 						return &pages.BlogPage{Year: year}
 					},
 					TypeID: BlogPage_TypeID,
@@ -63,15 +70,15 @@ func registerRoutes(routerEngine *router.Engine, mainLayout *sharedlayouts.MainL
 			Path: "/admin",
 			Chain: []router.ComponentMetadata{
 				{
-					Factory: func() runtime.Component { return mainLayout },
+					Factory: func(params map[string]string) runtime.Component { return mainLayout },
 					TypeID:  MainLayout_TypeID,
 				},
 				{
-					Factory: func() runtime.Component { return layouts.NewAdminLayout() },
+					Factory: func(params map[string]string) runtime.Component { return layouts.NewAdminLayout() },
 					TypeID:  AdminLayout_TypeID,
 				},
 				{
-					Factory: func() runtime.Component { return &admin.AdminPage{} },
+					Factory: func(params map[string]string) runtime.Component { return &admin.AdminPage{} },
 					TypeID:  AdminPage_TypeID,
 				},
 			},
@@ -80,15 +87,15 @@ func registerRoutes(routerEngine *router.Engine, mainLayout *sharedlayouts.MainL
 			Path: "/admin/settings",
 			Chain: []router.ComponentMetadata{
 				{
-					Factory: func() runtime.Component { return mainLayout },
+					Factory: func(params map[string]string) runtime.Component { return mainLayout },
 					TypeID:  MainLayout_TypeID,
 				},
 				{
-					Factory: func() runtime.Component { return layouts.NewAdminLayout() },
+					Factory: func(params map[string]string) runtime.Component { return layouts.NewAdminLayout() },
 					TypeID:  AdminLayout_TypeID,
 				},
 				{
-					Factory: func() runtime.Component { return &settings.Settings{} },
+					Factory: func(params map[string]string) runtime.Component { return &settings.Settings{} },
 					TypeID:  SettingsPage_TypeID,
 				},
 			},
@@ -97,15 +104,15 @@ func registerRoutes(routerEngine *router.Engine, mainLayout *sharedlayouts.MainL
 			Path: "/admin/users",
 			Chain: []router.ComponentMetadata{
 				{
-					Factory: func() runtime.Component { return mainLayout },
+					Factory: func(params map[string]string) runtime.Component { return mainLayout },
 					TypeID:  MainLayout_TypeID,
 				},
 				{
-					Factory: func() runtime.Component { return layouts.NewAdminLayout() },
+					Factory: func(params map[string]string) runtime.Component { return layouts.NewAdminLayout() },
 					TypeID:  AdminLayout_TypeID,
 				},
 				{
-					Factory: func() runtime.Component { return &users.Users{} },
+					Factory: func(params map[string]string) runtime.Component { return &users.Users{} },
 					TypeID:  UsersPage_TypeID,
 				},
 			},

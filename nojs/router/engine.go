@@ -5,6 +5,7 @@ package router
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"syscall/js"
 
@@ -103,6 +104,10 @@ func (e *Engine) navigateInternal(path string, skipPushState bool) error {
 
 	console.Log("[Engine.Navigate] Pivot point:", pivot, "Chain length:", len(targetRoute.Chain))
 
+	// Extract URL parameters from route pattern
+	params := e.extractParams(targetRoute.Path, path)
+	console.Log("[Engine.Navigate] Extracted params:", fmt.Sprintf("%v", params))
+
 	// Destroy volatile (new) component instances from pivot onwards
 	for i := pivot; i < len(e.liveInstances); i++ {
 		instance := e.liveInstances[i]
@@ -121,7 +126,7 @@ func (e *Engine) navigateInternal(path string, skipPushState bool) error {
 
 	// Create new instances from pivot onwards
 	for i := pivot; i < len(targetRoute.Chain); i++ {
-		instance := targetRoute.Chain[i].Factory()
+		instance := targetRoute.Chain[i].Factory(params)
 
 		// Inject renderer so component can call StateHasChanged() and Navigate()
 		instance.SetRenderer(e.renderer)
@@ -213,6 +218,46 @@ func (e *Engine) calculatePivot(targetChain []ComponentMetadata) int {
 	return minLen
 }
 
+// extractParams parses URL parameters from a path based on route pattern.
+// Returns a map of parameter names to their values extracted from the URL.
+//
+// Example:
+//
+//	extractParams("/blog/{year}", "/blog/2026") returns {"year": "2026"}
+//	extractParams("/users/{id}/posts/{postId}", "/users/42/posts/100") returns {"id": "42", "postId": "100"}
+func (e *Engine) extractParams(routePath, actualPath string) map[string]string {
+	// Normalize paths (remove trailing slashes for comparison)
+	routePath = strings.TrimSuffix(routePath, "/")
+	actualPath = strings.TrimSuffix(actualPath, "/")
+
+	// Handle root path specially
+	if routePath == "" {
+		routePath = "/"
+	}
+	if actualPath == "" {
+		actualPath = "/"
+	}
+
+	routeParts := strings.Split(strings.Trim(routePath, "/"), "/")
+	actualParts := strings.Split(strings.Trim(actualPath, "/"), "/")
+
+	params := make(map[string]string)
+
+	// Extract parameters from matching segments
+	for i := range routeParts {
+		if i >= len(actualParts) {
+			break
+		}
+		if strings.HasPrefix(routeParts[i], "{") && strings.HasSuffix(routeParts[i], "}") {
+			// This is a parameter placeholder - extract the parameter name and value
+			paramName := strings.Trim(routeParts[i], "{}")
+			params[paramName] = actualParts[i]
+		}
+	}
+
+	return params
+}
+
 // CurrentPath returns the current route path.
 func (e *Engine) CurrentPath() string {
 	e.mu.Lock()
@@ -273,10 +318,13 @@ func (e *Engine) GetComponentForPath(path string) (runtime.Component, bool) {
 		return nil, false
 	}
 
+	// Extract URL parameters from route pattern
+	params := e.extractParams(targetRoute.Path, path)
+
 	// Return the leaf component (last in chain)
 	// Create a new instance to return
 	leaf := targetRoute.Chain[len(targetRoute.Chain)-1]
-	return leaf.Factory(), true
+	return leaf.Factory(params), true
 }
 
 // Cleanup releases resources held by the engine.

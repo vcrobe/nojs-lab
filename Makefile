@@ -4,7 +4,7 @@
 COMPILER_PATH := github.com/vcrobe/nojs/cmd/nojs-compiler
 COMPONENTS_DIR := ./app/internal/app/components
 WASM_OUTPUT := ./app/wwwroot/main.wasm
-MAIN_PATH := ./app/internal/app/main.go
+MAIN_PATH := ./app/internal/app
 BUILD_TAGS := -tags=dev
 
 # Default target
