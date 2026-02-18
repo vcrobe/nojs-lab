@@ -9,11 +9,9 @@ Purpose: Help AI agents work productively in this Go + WebAssembly (WASM) framew
   - **Go + WASM**: Go code compiles to WASM binary for browser execution via syscall/js
   - **Component Model**: Reusable UI building blocks combining Go structs (logic/state) with HTML templates (structure)
   - **Virtual DOM**: In-memory DOM representation with efficient diff/patch cycles to minimize real DOM operations
-  - **AOT Compilation**: Ahead-of-Time template parsing that auto-generates Render() methods from HTML templates *(currently in development)*
+  - **AOT Compilation**: Ahead-of-Time template parsing that auto-generates Render() methods from HTML templates
 
-- Current state: Basic WASM interop established with minimal VDOM scaffold (`vdom/`, `component/`) supporting `<p>`, `<button>`, `<div>` and `<input>` elements. AOT compiler development is underway.
-
-Key files
+## Key files
 - `main.go`: WASM entrypoint. Exports Go functions, calls into JS, then blocks with `select {}` to keep runtime alive.
 - `core.js`: loads `main.wasm` with `Go` from `wasm_exec.js`, provides component loading and framework bootstrapping.
 - `labtests.js`: browser-side helpers for testing Go-JS interop.
