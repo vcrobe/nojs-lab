@@ -1240,8 +1240,22 @@ The **Router Engine** implements a sophisticated layout management system for th
 **Production-ready**: The implementation is battle-tested, handles edge cases, and provides excellent performance for real-world applications.
 
 **Future enhancements**:
-- Multiple slots per layout
-- Animation hooks during transitions
-- Nested route parameter constraints (type validation, regex patterns)
+
+**Parameter Handling:**
+- Query parameter support (`/search?q=term&page=2`)
+- Hash fragment parameters (`/page#section`)
+- Optional path parameters (`/blog/{year?}/{month?}`)
+- Wildcard/catch-all routes (`/files/{*filepath}`)
+- Parameter constraints (`/users/{id:int}`, `/posts/{slug:regex([a-z-]+)}`)
+
+**Layout Features:**
+- Multiple slots per layout (named slots for complex layouts)
+- Animation hooks during route transitions
+- Layout preloading for faster navigation
+
+**Advanced Routing:**
+- Navigation guards and route middleware
+- Route metadata for authentication/authorization
+- Lazy loading of heavy component modules
 
 The combination of Go's performance, WASM's near-native speed, and the Engine's smart algorithms makes this framework a compelling choice for building complex SPAs.

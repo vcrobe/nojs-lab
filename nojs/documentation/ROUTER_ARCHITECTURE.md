@@ -155,18 +155,134 @@ extractParams("/posts/{year}/{month}/{slug}", "/posts/2024/11/hello")
 matchesPattern("/about", "/contact") → false
 ```
 
-### Parameter Constraints
+### URL Parameter Methods
 
-**Currently supported**:
+#### 1. Path Parameters (Currently Implemented) ✅
+
+Parameters embedded directly in the URL path using `{paramName}` syntax.
+
+**Supported:**
 - Dynamic segments with curly braces (e.g., `{id}`, `{year}`, `{slug}`)
 - Multiple parameters per route (e.g., `/posts/{year}/{month}/{slug}`)
-- Parameter extraction passed to component factories
+- Parameters extracted via `extractParams()` and passed to `ComponentFactory` as `map[string]string`
 
-**NOT yet supported** (future enhancement):
-- Type constraints (e.g., `{id:int}`)
-- Regex patterns (e.g., `{slug:[a-z-]+}`)
-- Optional segments
-- Wildcard routes
+**Examples:**
+```go
+// Route definition
+Path: "/blog/{year}"
+Path: "/users/{id}"
+Path: "/posts/{year}/{month}/{slug}"
+
+// Extracted parameters
+"/blog/2026"           → {"year": "2026"}
+"/users/123"           → {"id": "123"}
+"/posts/2024/11/hello" → {"year": "2024", "month": "11", "slug": "hello"}
+```
+
+#### 2. Query Parameters (Not Implemented) ❌
+
+Parameters appended after `?` in the URL for optional filters and pagination.
+
+**Planned syntax:**
+```go
+"/search?q=golang&page=2"           → {"q": "golang", "page": "2"}
+"/products?category=books&sort=asc" → {"category": "books", "sort": "asc"}
+"/users/123?tab=profile&edit=true"  → path: {"id": "123"}, query: {"tab": "profile", "edit": "true"}
+```
+
+**Implementation approach:** Use JavaScript `URLSearchParams` API to extract query string parameters.
+
+#### 3. Hash Fragment Parameters (Not Implemented) ❌
+
+Parameters after `#` for in-page navigation and SPA state.
+
+**Planned syntax:**
+```go
+"/users/123#comments"  → path: "/users/123", hash: "comments"
+"/page#section=profile" → path: "/page", hash: "section=profile"
+```
+
+#### 4. Optional Parameters (Not Implemented) ❌
+
+Path segments that may or may not be present.
+
+**Planned syntax:**
+```go
+Path: "/blog/{year?}/{month?}"
+
+// All match same route:
+"/blog"           → {}
+"/blog/2026"      → {"year": "2026"}
+"/blog/2026/11"   → {"year": "2026", "month": "11"}
+```
+
+#### 5. Wildcard/Catch-All Parameters (Not Implemented) ❌
+
+Capture remaining path segments as a single parameter.
+
+**Planned syntax:**
+```go
+Path: "/files/{*filepath}"
+
+"/files/docs/manual.pdf"        → {"filepath": "docs/manual.pdf"}
+"/files/images/2024/photo.jpg"  → {"filepath": "images/2024/photo.jpg"}
+```
+
+#### 6. Parameter Constraints (Not Implemented) ❌
+
+Type validation or regex patterns for parameters.
+
+**Planned syntax:**
+```go
+Path: "/users/{id:int}"                    // id must be numeric
+Path: "/posts/{slug:regex([a-z-]+)}"       // slug matches pattern
+Path: "/blog/{year:range(2000,2030)}"      // year in range
+
+"/users/123"  ✅ Valid
+"/users/abc"  ❌ Constraint fails
+```
+
+#### 7. Matrix Parameters (Not Implemented) ❌
+
+Parameters within path segments using `;` delimiter (uncommon but valid).
+
+**Planned syntax:**
+```go
+"/products;color=red;size=large"     → {"color": "red", "size": "large"}
+"/users;id=123;role=admin/profile"   → {"id": "123", "role": "admin"}
+```
+
+#### 8. Route State via history.pushState (Not Implemented) ❌
+
+Hidden parameters passed via browser history API without showing in URL.
+
+**Planned syntax:**
+```go
+history.Call("pushState", 
+    map[string]interface{}{
+        "userId": 123,
+        "modal": "open",
+    }, 
+    "", 
+    path)
+```
+
+**Use case:** Passing temporary UI state (modals, scroll position) without URL pollution.
+
+---
+
+### Implementation Priority
+
+| Method | Priority | Status | Use Case |
+|--------|----------|--------|----------|
+| Path Parameters | - | ✅ Implemented | RESTful resource identifiers |
+| Query Parameters | High | ❌ Planned | Optional filters, pagination, search |
+| Hash Fragments | Medium | ❌ Planned | In-page navigation, SPA state |
+| Optional Parameters | Medium | ❌ Planned | Flexible route matching |
+| Wildcard Parameters | Low | ❌ Planned | File paths, nested routes |
+| Parameter Constraints | Low | ❌ Planned | Type safety, validation |
+| Matrix Parameters | Very Low | ❌ Planned | Complex filtering (rare) |
+| Route State | Low | ❌ Planned | Hidden UI state |
 
 ---
 
@@ -780,15 +896,75 @@ func (a *AboutPage) Render(r *runtime.Renderer) *vdom.VNode {
 
 ## Future Enhancements
 
-### Phase 2: Advanced Route Matching
+### Phase 1: Query Parameter Support (High Priority)
 
-- **Type constraints**: `/users/{id:int}`
-- **Regex patterns**: `/posts/{slug:[a-z0-9-]+}`
-- **Optional segments**: `/search/{query?}`
-- **Wildcard routes**: `/files/*filepath`
-- **Query string parsing**: `/search?q=term&page=2`
+Add support for URL query strings to enable filtering, pagination, and search.
 
-### Phase 3: Navigation Guards
+**Implementation:**
+```go
+func (e *Engine) extractQueryParams(url string) map[string]string {
+    jsURL := js.Global().Get("URL").New(url, js.Global().Get("location").Get("href"))
+    searchParams := jsURL.Get("searchParams")
+    
+    params := make(map[string]string)
+    iterator := searchParams.Call("entries")
+    for {
+        next := iterator.Call("next")
+        if next.Get("done").Bool() {
+            break
+        }
+        entry := next.Get("value")
+        params[entry.Index(0).String()] = entry.Index(1).String()
+    }
+    return params
+}
+```
+
+**Usage:**
+```go
+routerEngine.RegisterRoutes([]router.Route{
+    {
+        Path: "/search",
+        Chain: []router.ComponentMetadata{
+            {
+                Factory: func(params map[string]string) runtime.Component {
+                    // params now includes both path and query parameters
+                    query := params["q"]
+                    page := params["page"]
+                    return &SearchPage{Query: query, Page: page}
+                },
+                TypeID: SearchPage_TypeID,
+            },
+        },
+    },
+})
+```
+
+### Phase 2: Optional and Wildcard Parameters
+
+Add flexible route matching for optional segments and catch-all routes.
+
+**Optional parameters:**
+```go
+Path: "/blog/{year?}/{month?}" // Matches /blog, /blog/2026, /blog/2026/11
+```
+
+**Wildcard parameters:**
+```go
+Path: "/files/{*filepath}" // Captures remaining path: /files/docs/manual.pdf
+```
+
+### Phase 3: Parameter Constraints and Validation
+
+Add type constraints and regex validation for route parameters.
+
+```go
+Path: "/users/{id:int}"                    // Only matches numeric IDs
+Path: "/posts/{slug:regex([a-z0-9-]+)}"    // Pattern validation
+Path: "/blog/{year:range(2000,2030)}"      // Range validation
+```
+
+### Phase 4: Navigation Guards
 
 ```go
 engine.BeforeNavigate(func(from, to string) bool {
