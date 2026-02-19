@@ -1,0 +1,133 @@
+name: 🚀 Feature Request
+description: Suggest an idea or enhancement for nojs
+title: "[FEATURE]: <Short description>"
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for wanting to improve nojs! We are highly selective about new features to keep the framework lean and type-safe.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected Area
+      description: Which part of the framework does this feature relate to?
+      options:
+        - Compiler (AOT, Template Parsing)
+        - Router (Navigation, Routes)
+        - VDOM (Virtual DOM, Rendering)
+        - Runtime (Component Lifecycle)
+        - Events (Event System)
+        - Core (Framework Engine)
+        - Standard Library (Built-in Components)
+        - Developer Experience (Tooling, DX)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Is your feature request related to a problem?
+      description: A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe the solution you'd like
+      description: A clear and concise description of what you want to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: example-code
+    attributes:
+      label: Example Code
+      description: Show how the feature would be used in practice. Include Go code and/or template syntax.
+      placeholder: |
+        ```go
+        type MyComponent struct {
+            runtime.ComponentBase
+            items []string
+        }
+        
+        func (c *MyComponent) Render(r runtime.Renderer) *vdom.VNode {
+            // Example usage of the proposed feature
+        }
+        ```
+      render: go
+    validations:
+      required: true
+
+  - type: textarea
+    id: go-idiomatic
+    attributes:
+      label: Why is this "Go-Idiomatic"?
+      description: |
+        Explain how this feature fits the Go philosophy (Explicit over Implicit, Type Safety). 
+        How would the API look in Go code?
+      placeholder: |
+        Example: The directive should use a syntax similar to Go's 'select' statement...
+    validations:
+      required: true
+
+  - type: textarea
+    id: similar-features
+    attributes:
+      label: Similar Features in Other Frameworks
+      description: |
+        Reference similar patterns from React, Vue, Blazor, or other frameworks. 
+        Explain how your proposal adapts them for Go.
+      placeholder: |
+        Example: Similar to React's useEffect hook, but with explicit lifecycle methods...
+    validations:
+      required: false
+
+  - type: textarea
+    id: performance-impact
+    attributes:
+      label: Performance Considerations
+      description: |
+        Discuss potential performance impact, especially for WASM binary size and runtime performance.
+        How can the implementation be optimized?
+      placeholder: |
+        Example: This should compile to minimal WASM bytecode and avoid reflection...
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Describe alternatives you've considered
+      description: A clear and concise description of any alternative solutions or features you've considered.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: breaking-change
+    attributes:
+      label: Breaking Change
+      options:
+        - label: This feature would introduce breaking changes to existing APIs
+          required: false
+
+  - type: checkboxes
+    id: alignment
+    attributes:
+      label: Philosophy Alignment
+      options:
+        - label: I have read the Framework Core Philosophy in the README.
+          required: true
+        - label: This feature does not introduce "magic" or hidden state transitions.
+          required: true
+        - label: This feature maintains compile-time type safety.
+          required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context or mockups about the feature request here.
