@@ -1,0 +1,50 @@
+<div class="page">
+    <div class="page-header">
+        <div class="render-badge">Renders: {RenderCount}</div>
+        <h1>📋 List Rendering</h1>
+        <p>
+            The <span class="code">{@for}</span> directive iterates slices with a required
+            <span class="code">trackBy</span> clause. The key tells the VDOM reconciler which
+            nodes changed, moved, or were added — enabling minimal DOM updates.
+        </p>
+    </div>
+    <div class="page-body">
+
+        <div class="demo-box">
+            <div class="demo-controls">
+                <button @onclick="AddItem" class="btn-primary">+ Add Item</button>
+                <button @onclick="RemoveLast" class="btn-danger">− Remove Last</button>
+                <button @onclick="Reset" class="btn-ghost">Reset</button>
+            </div>
+        </div>
+
+        {@if HasItems}
+            <div class="demo-box">
+                <div class="section-title">Items (tracked by value)</div>
+                <ul class="tech-list">
+                    {@for i, item := range Items trackBy item}
+                        <li class="tech-item">
+                            <span class="tech-index">[{i}]</span>
+                            <span class="tech-name">{item}</span>
+                        </li>
+                    {@endfor}
+                </ul>
+            </div>
+        {@else}
+            <div class="demo-box">
+                <p class="empty-state">No items. Click "+ Add Item" to start.</p>
+            </div>
+        {@endif}
+
+        <div class="demo-box">
+            <div class="section-title">How it works</div>
+            <p style="font-size:14px; color: var(--muted); line-height: 1.7;">
+                Each item has a unique <span class="code">trackBy</span> key. When the list changes,
+                the VDOM reconciler matches existing DOM nodes to new data by key — only inserted,
+                removed, or reordered nodes touch the real DOM.
+                Pointer-stable instance caching preserves any component state inside list items.
+            </p>
+        </div>
+
+    </div>
+</div>

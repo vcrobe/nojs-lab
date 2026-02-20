@@ -1,0 +1,51 @@
+<div class="page">
+    <div class="page-header">
+        <div class="render-badge">Renders: {RenderCount}</div>
+        <h1>🎭 Content Slots</h1>
+        <p>
+            Expose a <span class="code">[]*vdom.VNode</span> field in your component struct.
+            The framework automatically injects child content from the parent's template into that field —
+            no DOM attributes, no string keys, all tracked in Go memory.
+        </p>
+    </div>
+    <div class="page-body">
+
+        <div class="demo-box">
+            <div class="section-title">Slot Pattern</div>
+            <div class="slot-diagram">
+                <div><span class="slot-tag">type</span> <span class="highlight">Modal</span> <span class="slot-tag">struct</span> {</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;runtime.ComponentBase</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="slot-field">BodyContent</span> <span class="slot-highlight">[]*vdom.VNode</span> <span class="slot-tag">// ← this IS the slot</span></div>
+                <div>}</div>
+                <br/>
+                <div><span class="slot-tag">&lt;</span><span class="highlight">Modal</span> <span class="slot-field">Title</span>="My Dialog"<span class="slot-tag">&gt;</span></div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="slot-tag">&lt;p&gt;</span><span class="slot-highlight">This content is projected in</span><span class="slot-tag">&lt;/p&gt;</span></div>
+                <div><span class="slot-tag">&lt;/</span><span class="highlight">Modal</span><span class="slot-tag">&gt;</span></div>
+            </div>
+        </div>
+
+        <div class="demo-box">
+            <div class="section-title">Live Demo</div>
+            <div class="demo-controls">
+                <button @onclick="OpenModal" class="btn-primary">Open Modal</button>
+            </div>
+            {@if HasResult}
+                <div class="live-preview" style="margin-top: 16px;">
+                    <p>{LastResult}</p>
+                </div>
+            {@endif}
+        </div>
+
+        <Modal
+            IsVisible="{IsModalVisible}"
+            Title="Slot Demo"
+            Type="{modal.Information}"
+            ShowCancelButton="{true}"
+            OnClose="HandleModalClose"
+        >
+            <p>This content is projected into the Modal's <span class="code">BodyContent</span> slot.</p>
+            <p>The parent controls what goes inside — the Modal just renders it.</p>
+        </Modal>
+
+    </div>
+</div>

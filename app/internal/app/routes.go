@@ -3,13 +3,7 @@
 package main
 
 import (
-	"strconv"
-
 	"github.com/vcrobe/app/internal/app/components/pages"
-	"github.com/vcrobe/app/internal/app/components/pages/admin"
-	"github.com/vcrobe/app/internal/app/components/pages/admin/layouts"
-	"github.com/vcrobe/app/internal/app/components/pages/admin/settings"
-	"github.com/vcrobe/app/internal/app/components/pages/admin/users"
 	sharedlayouts "github.com/vcrobe/app/internal/app/components/shared/layouts"
 	"github.com/vcrobe/app/internal/app/context"
 	router "github.com/vcrobe/nojs-router"
@@ -17,104 +11,65 @@ import (
 )
 
 func registerRoutes(routerEngine *router.Engine, mainLayout *sharedlayouts.MainLayout, mainLayoutCtx *context.MainLayoutCtx) {
-	// Define all routes with layout chains and TypeIDs
+	_ = mainLayoutCtx // reserved for future use
+
+	ml := func(p map[string]string) runtime.Component { return mainLayout }
+
 	routerEngine.RegisterRoutes([]router.Route{
 		{
 			Path: "/",
 			Chain: []router.ComponentMetadata{
-				{
-					Factory: func(params map[string]string) runtime.Component { return mainLayout },
-					TypeID:  MainLayout_TypeID,
-				},
-				{
-					Factory: func(params map[string]string) runtime.Component { return &pages.HomePage{MainLayoutCtx: mainLayoutCtx} },
-					TypeID:  HomePage_TypeID,
-				},
+				{Factory: ml, TypeID: MainLayout_TypeID},
+				{Factory: func(p map[string]string) runtime.Component { return &pages.LandingPage{} }, TypeID: LandingPage_TypeID},
 			},
 		},
 		{
-			Path: "/about",
+			Path: "/demo/counter",
 			Chain: []router.ComponentMetadata{
-				{
-					Factory: func(params map[string]string) runtime.Component { return mainLayout },
-					TypeID:  MainLayout_TypeID,
-				},
-				{
-					Factory: func(params map[string]string) runtime.Component { return &pages.AboutPage{} },
-					TypeID:  AboutPage_TypeID,
-				},
+				{Factory: ml, TypeID: MainLayout_TypeID},
+				{Factory: func(p map[string]string) runtime.Component { return &pages.CounterPage{} }, TypeID: CounterPage_TypeID},
 			},
 		},
 		{
-			Path: "/blog/{year}",
+			Path: "/demo/lifecycle",
 			Chain: []router.ComponentMetadata{
-				{
-					Factory: func(params map[string]string) runtime.Component { return mainLayout },
-					TypeID:  MainLayout_TypeID,
-				},
-				{
-					Factory: func(params map[string]string) runtime.Component {
-						year := 2026 // Default value
-						if yearStr, ok := params["year"]; ok {
-							if parsed, err := strconv.Atoi(yearStr); err == nil {
-								year = parsed
-							}
-						}
-						return &pages.BlogPage{Year: year}
-					},
-					TypeID: BlogPage_TypeID,
-				},
+				{Factory: ml, TypeID: MainLayout_TypeID},
+				{Factory: func(p map[string]string) runtime.Component { return &pages.LifecyclePage{} }, TypeID: LifecyclePage_TypeID},
 			},
 		},
 		{
-			Path: "/admin",
+			Path: "/demo/forms",
 			Chain: []router.ComponentMetadata{
-				{
-					Factory: func(params map[string]string) runtime.Component { return mainLayout },
-					TypeID:  MainLayout_TypeID,
-				},
-				{
-					Factory: func(params map[string]string) runtime.Component { return layouts.NewAdminLayout() },
-					TypeID:  AdminLayout_TypeID,
-				},
-				{
-					Factory: func(params map[string]string) runtime.Component { return &admin.AdminPage{} },
-					TypeID:  AdminPage_TypeID,
-				},
+				{Factory: ml, TypeID: MainLayout_TypeID},
+				{Factory: func(p map[string]string) runtime.Component { return &pages.FormsPage{} }, TypeID: FormsPage_TypeID},
 			},
 		},
 		{
-			Path: "/admin/settings",
+			Path: "/demo/conditionals",
 			Chain: []router.ComponentMetadata{
-				{
-					Factory: func(params map[string]string) runtime.Component { return mainLayout },
-					TypeID:  MainLayout_TypeID,
-				},
-				{
-					Factory: func(params map[string]string) runtime.Component { return layouts.NewAdminLayout() },
-					TypeID:  AdminLayout_TypeID,
-				},
-				{
-					Factory: func(params map[string]string) runtime.Component { return &settings.Settings{} },
-					TypeID:  SettingsPage_TypeID,
-				},
+				{Factory: ml, TypeID: MainLayout_TypeID},
+				{Factory: func(p map[string]string) runtime.Component { return &pages.ConditionalsPage{} }, TypeID: ConditionalsPage_TypeID},
 			},
 		},
 		{
-			Path: "/admin/users",
+			Path: "/demo/lists",
 			Chain: []router.ComponentMetadata{
-				{
-					Factory: func(params map[string]string) runtime.Component { return mainLayout },
-					TypeID:  MainLayout_TypeID,
-				},
-				{
-					Factory: func(params map[string]string) runtime.Component { return layouts.NewAdminLayout() },
-					TypeID:  AdminLayout_TypeID,
-				},
-				{
-					Factory: func(params map[string]string) runtime.Component { return &users.Users{} },
-					TypeID:  UsersPage_TypeID,
-				},
+				{Factory: ml, TypeID: MainLayout_TypeID},
+				{Factory: func(p map[string]string) runtime.Component { return &pages.ListsPage{} }, TypeID: ListsPage_TypeID},
+			},
+		},
+		{
+			Path: "/demo/slots",
+			Chain: []router.ComponentMetadata{
+				{Factory: ml, TypeID: MainLayout_TypeID},
+				{Factory: func(p map[string]string) runtime.Component { return &pages.SlotsPage{} }, TypeID: SlotsPage_TypeID},
+			},
+		},
+		{
+			Path: "/demo/router/{id}",
+			Chain: []router.ComponentMetadata{
+				{Factory: ml, TypeID: MainLayout_TypeID},
+				{Factory: func(p map[string]string) runtime.Component { return &pages.RouterParamsPage{ID: p["id"]} }, TypeID: RouterParamsPage_TypeID},
 			},
 		},
 	})

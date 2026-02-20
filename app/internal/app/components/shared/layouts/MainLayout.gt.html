@@ -1,14 +1,26 @@
-<div id="mainLayoutComponent">
-    <header>
-        <h1>Layout title: {MainLayoutCtx.Title}</h1>
-    </header>
-    <main>
-        <nav style="background-color: cadetblue;">
-            <RouterLink Href="/about">Go to About Page</RouterLink>
-            <br/>
-            <RouterLink Href="/admin">Go to Admin Page</RouterLink>
-            <br/>
+<div id="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <span class="brand-icon">⚡</span>
+            <div>
+                <div class="brand-name">nojs</div>
+                <div class="brand-tagline">Go + WebAssembly</div>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <RouterLink Href="/">🏠 Home</RouterLink>
+            <div class="nav-section">Demos</div>
+            <RouterLink Href="/demo/counter">⚡ Reactive State</RouterLink>
+            <RouterLink Href="/demo/lifecycle">🔄 Lifecycle Hooks</RouterLink>
+            <RouterLink Href="/demo/forms">📝 Forms &amp; Events</RouterLink>
+            <RouterLink Href="/demo/conditionals">🔀 Conditionals</RouterLink>
+            <RouterLink Href="/demo/lists">📋 List Rendering</RouterLink>
+            <RouterLink Href="/demo/slots">🎭 Slots</RouterLink>
+            <RouterLink Href="/demo/router/42">🔗 Router Params</RouterLink>
         </nav>
+        <div class="sidebar-footer">go build -o main.wasm</div>
+    </aside>
+    <main class="content">
         {BodyContent}
     </main>
 </div>

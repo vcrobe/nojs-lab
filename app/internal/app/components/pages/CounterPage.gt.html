@@ -1,0 +1,37 @@
+<div class="page">
+    <div class="page-header">
+        <div class="render-badge">Renders: {RenderCount}</div>
+        <h1>⚡ Reactive State</h1>
+        <p>
+            Mutate a field on your component struct, then call
+            <span class="code">StateHasChanged()</span>.
+            The virtual DOM diffs the new output against the previous tree
+            and patches only what changed — no full page reload, no manual DOM queries.
+        </p>
+    </div>
+    <div class="page-body">
+
+        <div class="demo-box">
+            <div class="section-title">Counter</div>
+            <div class="demo-controls">
+                <div class="counter-widget">
+                    <button @onclick="Decrement">−</button>
+                    <span class="counter-value">{Count}</span>
+                    <button @onclick="Increment">+</button>
+                </div>
+                <button @onclick="Reset" class="btn-ghost">Reset</button>
+            </div>
+        </div>
+
+        <div class="demo-box">
+            <div class="section-title">How it works</div>
+            <div class="slot-diagram">
+                <div><span class="slot-tag">func</span> <span class="highlight">(c *CounterPage)</span> <span class="slot-field">Increment</span><span class="slot-tag">()</span> {</div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;c.Count<span class="slot-tag">++</span></div>
+                <div>&nbsp;&nbsp;&nbsp;&nbsp;c.<span class="slot-highlight">StateHasChanged</span>()</div>
+                <div>}</div>
+            </div>
+        </div>
+
+    </div>
+</div>

@@ -1,0 +1,51 @@
+<div class="page">
+    <div class="page-header">
+        <div class="render-badge">OnParametersSet calls: {ParamSetCount}</div>
+        <h1>🔄 Lifecycle Hooks</h1>
+        <p>
+            Components implement optional lifecycle interfaces.
+            Navigate away and come back to see <span class="code">OnMount</span> fire again
+            while the layout stays mounted (pivot algorithm at work).
+        </p>
+    </div>
+    <div class="page-body">
+
+        <div class="demo-box">
+            <div class="lifecycle-timeline">
+
+                <div class="lifecycle-event">
+                    <div class="lifecycle-dot dot-green"></div>
+                    <div class="lifecycle-info">
+                        <h4>OnMount()</h4>
+                        <p>Called once, before the first render. Use it for data fetching, timers, subscriptions.</p>
+                        <div class="lifecycle-value">
+                            Mount #{MountCount} — mounted at {MountTime}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lifecycle-event">
+                    <div class="lifecycle-dot dot-blue"></div>
+                    <div class="lifecycle-info">
+                        <h4>OnParametersSet()</h4>
+                        <p>Called before every render (including the first). Use it to react to prop changes or pre-compute derived state. The render counter badge above is incremented here.</p>
+                        <div class="lifecycle-value">
+                            Called {ParamSetCount} time(s) this visit
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lifecycle-event">
+                    <div class="lifecycle-dot dot-red"></div>
+                    <div class="lifecycle-info">
+                        <h4>OnUnmount()</h4>
+                        <p>Called when the component is removed from the tree (e.g., you navigate away). Cancel goroutines, release resources, clear timers here.</p>
+                        <div class="lifecycle-value">Navigate away → watch mount count increment when you return</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>

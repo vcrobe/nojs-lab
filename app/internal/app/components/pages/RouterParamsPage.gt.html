@@ -1,0 +1,41 @@
+<div class="page">
+    <div class="page-header">
+        <div class="render-badge">Renders: {RenderCount}</div>
+        <h1>🔗 Router Params</h1>
+        <p>
+            Route parameters are extracted from URL patterns like <span class="code">/demo/router/:id</span>
+            and passed to the component factory. Change the URL or click a link below — the layout never
+            remounts (pivot algorithm), only this page component is replaced.
+        </p>
+    </div>
+    <div class="page-body">
+
+        <div class="demo-box">
+            <div class="section-title">Current Route Parameter</div>
+            <div class="route-display">
+                <div class="route-path">Route: /demo/router/<span class="slot-highlight">:id</span></div>
+                <div class="route-param-value">{ID}</div>
+            </div>
+        </div>
+
+        <div class="demo-box">
+            <div class="section-title">Navigate via RouterLink</div>
+            <div class="param-links">
+                <RouterLink Href="/demo/router/42">id = 42</RouterLink>
+                <RouterLink Href="/demo/router/go-wasm">id = go-wasm</RouterLink>
+                <RouterLink Href="/demo/router/hello">id = hello</RouterLink>
+                <RouterLink Href="/demo/router/nojs">id = nojs</RouterLink>
+                <RouterLink Href="/demo/router/framework">id = framework</RouterLink>
+            </div>
+        </div>
+
+        <div class="demo-box">
+            <div class="section-title">Programmatic Navigation</div>
+            <p style="font-size: 14px; color: var(--muted); margin-bottom: 14px;">
+                Call <span class="code">c.Navigate(path)</span> from any component method.
+            </p>
+            <button @onclick="GoToNext" class="btn-primary">Navigate to Next ID</button>
+        </div>
+
+    </div>
+</div>

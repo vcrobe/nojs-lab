@@ -1,0 +1,52 @@
+<div class="page">
+    <div class="page-header">
+        <div class="render-badge">Renders: {RenderCount}</div>
+        <h1>📝 Forms &amp; Events</h1>
+        <p>
+            Bind event handlers with <span class="code">@oninput</span>, <span class="code">@onchange</span>,
+            <span class="code">@onclick</span> and more. The compiler validates handler signatures against
+            the event type at build time.
+        </p>
+    </div>
+    <div class="page-body">
+
+        <div class="demo-box">
+            <div class="form-group">
+                <div class="form-label">Your Name</div>
+                <input type="text" @oninput="HandleNameInput" placeholder="Type your name..." />
+            </div>
+            <br/>
+            <div class="form-group">
+                <div class="form-label">Favorite Language</div>
+                <select @onchange="HandleLanguageChange">
+                    <option value="Go">Go</option>
+                    <option value="Rust">Rust</option>
+                    <option value="TypeScript">TypeScript</option>
+                    <option value="Zig">Zig</option>
+                    <option value="C++">C++</option>
+                </select>
+            </div>
+            <br/>
+            <div class="demo-controls">
+                <div class="form-label">Seniority</div>
+                <button @onclick="ToggleSeniority">{IsSenior ? '🎓 Senior' : '🌱 Junior'}</button>
+            </div>
+        </div>
+
+        <div class="demo-box">
+            <div class="section-title">Live Preview</div>
+            {@if HasName}
+                <div class="live-preview">
+                    <p>Hello, <span class="highlight">{Name}</span>!</p>
+                    <p>Favorite language: <span class="highlight-green">{Language}</span></p>
+                    <p>Level: <span class="highlight-purple">{IsSenior ? 'Senior Developer' : 'Junior Developer'}</span></p>
+                </div>
+            {@else}
+                <div class="live-preview muted">
+                    <p>Start typing your name above to see the live preview...</p>
+                </div>
+            {@endif}
+        </div>
+
+    </div>
+</div>

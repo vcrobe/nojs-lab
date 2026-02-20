@@ -1,0 +1,40 @@
+<div class="page">
+    <div class="page-header">
+        <div class="render-badge">Renders: {RenderCount}</div>
+        <h1>🔀 Conditional Rendering</h1>
+        <p>
+            Use <span class="code">{@if}</span> / <span class="code">{@else}</span> in templates.
+            Conditions must be a single <span class="code">bool</span> field — validated at compile time.
+            Complex conditions are pre-computed as named fields in the struct.
+        </p>
+    </div>
+    <div class="page-body">
+
+        <div class="demo-box">
+            <div class="demo-controls">
+                <button @onclick="ToggleLogin">{IsLoggedIn ? '🔓 Log Out' : '🔐 Log In'}</button>
+                <button @onclick="ToggleAlert">{ShowAlert ? 'Hide Alert' : 'Show Alert'}</button>
+            </div>
+        </div>
+
+        {@if ShowAlert}
+            <div class="alert">
+                ⚠️ This banner is controlled by the <span class="code">ShowAlert</span> bool field.
+                It appears and disappears without touching the rest of the DOM.
+            </div>
+        {@endif}
+
+        {@if IsLoggedIn}
+            <div class="panel panel-success">
+                <h3>✅ Welcome back, Developer!</h3>
+                <p>You are authenticated. This entire panel is swapped out when you log out. The router sidebar above never re-renders — only this component's subtree is patched.</p>
+            </div>
+        {@else}
+            <div class="panel panel-muted">
+                <h3>🔒 Please Log In</h3>
+                <p>Click the "Log In" button above to switch the UI state. The VDOM will replace this panel with the authenticated view.</p>
+            </div>
+        {@endif}
+
+    </div>
+</div>
