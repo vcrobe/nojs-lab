@@ -1,7 +1,7 @@
 .PHONY: help wasm wasm-prod full full-prod clean serve
 
 # Variables
-COMPILER_PATH := github.com/vcrobe/nojs/cmd/nojs-compiler
+COMPILER_PATH := github.com/vcrobe/nojs-compiler/cmd/nojsc
 COMPONENTS_DIR := ./app/internal/app/components
 WASM_OUTPUT := ./app/wwwroot/main.wasm
 MAIN_PATH := ./app/internal/app

@@ -2,5 +2,6 @@ go 1.25.1
 
 use (
 	./app
+	./compiler
 	./nojs
 )

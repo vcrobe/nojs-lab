@@ -15,3 +15,4 @@ compiler/aotcompiler
 core-dev.css
 todo.md
 wasm_exec.js
+nojsc
