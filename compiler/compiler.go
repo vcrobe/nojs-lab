@@ -1456,8 +1456,8 @@ func generateTextExpression(text string, receiver string, currentComp componentI
 		}
 
 		// Type-safety check: does the field exist on the component struct (props or state)?
-		_, inProps := currentComp.Schema.Props[strings.ToLower(fieldName)]
-		_, inState := currentComp.Schema.State[strings.ToLower(fieldName)]
+		propDesc, inProps := currentComp.Schema.Props[strings.ToLower(fieldName)]
+		stateDesc, inState := currentComp.Schema.State[strings.ToLower(fieldName)]
 
 		if !inProps && !inState {
 			// If we're in a loop, provide more context in the error
@@ -1477,7 +1477,15 @@ func generateTextExpression(text string, receiver string, currentComp componentI
 			}
 			os.Exit(1)
 		}
-		args = append(args, fmt.Sprintf("%s.%s", receiver, fieldName))
+		// Use the schema's correctly-cased field name, not the raw template expression,
+		// so that e.g. {id} in the template correctly emits c.ID (not c.id).
+		var resolvedName string
+		if inProps {
+			resolvedName = propDesc.Name
+		} else {
+			resolvedName = stateDesc.Name
+		}
+		args = append(args, fmt.Sprintf("%s.%s", receiver, resolvedName))
 	}
 
 	return fmt.Sprintf(`fmt.Sprintf(%s, %s)`, strconv.Quote(formatString), strings.Join(args, ", "))
@@ -1965,9 +1973,12 @@ func generateNodeCode(n *html.Node, receiver string, componentMap map[string]com
 			textContent := ""
 			// Concatenate all text nodes within the element to handle multi-line text
 			var textBuilder strings.Builder
+			hasElementChildren := false
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				if c.Type == html.TextNode {
 					textBuilder.WriteString(c.Data)
+				} else if c.Type == html.ElementNode {
+					hasElementChildren = true
 				}
 			}
 			fullText := textBuilder.String()
@@ -1983,9 +1994,23 @@ func generateNodeCode(n *html.Node, receiver string, componentMap map[string]com
 			// The VDOM helpers expect a string, so we pass the generated expression
 			switch tagName {
 			case "p":
+				// If there are child elements (e.g. <span>), render as a full VNode with children
+				// so that inline elements are not silently dropped.
+				if hasElementChildren {
+					if childrenStr == "" {
+						return fmt.Sprintf("vdom.NewVNode(\"p\", %s, nil, \"\")", attrsMapStr)
+					}
+					return fmt.Sprintf("vdom.NewVNode(\"p\", %s, []*vdom.VNode{%s}, \"\")", attrsMapStr, childrenStr)
+				}
 				return fmt.Sprintf("vdom.Paragraph(%s, %s)", textContent, attrsMapStr)
 			case "button":
-				return fmt.Sprintf("vdom.Button(%s, %s, %s)", textContent, attrsMapStr, childrenStr)
+				// Always use children for button content (childrenStr already contains vdom.Text(...)
+				// for any plain-text children). Passing textContent as well would create redundant
+				// dual-storage (both Content and Children set), which breaks patch updates.
+				if childrenStr == "" {
+					return fmt.Sprintf("vdom.Button(\"\", %s)", attrsMapStr)
+				}
+				return fmt.Sprintf("vdom.Button(\"\", %s, %s)", attrsMapStr, childrenStr)
 			case "li":
 				// For li elements, check if there are child components/elements or just text
 				if len(childrenCode) > 0 {

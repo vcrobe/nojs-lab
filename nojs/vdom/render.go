@@ -202,10 +202,6 @@ func createElement(n *VNode) js.Value {
 	case "p":
 		el := doc.Call("createElement", "p")
 
-		if n.Content != "" {
-			el.Set("textContent", n.Content)
-		}
-
 		if n.Attributes != nil {
 			for k, v := range n.Attributes {
 				setAttributeValue(el, k, v)
@@ -213,7 +209,17 @@ func createElement(n *VNode) js.Value {
 			attachEventListeners(el, n, n.Attributes)
 		}
 
-		// children ignored for now
+		if n.Content != "" {
+			el.Set("textContent", n.Content)
+		} else if n.Children != nil {
+			for _, child := range n.Children {
+				childEl := createElement(child)
+				if childEl.Truthy() {
+					el.Call("appendChild", childEl)
+				}
+			}
+		}
+
 		return el
 	case "div":
 		el := doc.Call("createElement", "div")
@@ -566,10 +572,17 @@ func patchElement(domElement js.Value, oldVNode, newVNode *VNode) {
 			domElement.Set("value", newVNode.Content)
 		}
 	} else {
-		// Update text content for other elements ONLY if there are no children
-		// Setting textContent wipes out all child nodes, so we must check first
-		if len(newVNode.Children) == 0 && oldVNode.Content != newVNode.Content {
-			domElement.Set("textContent", newVNode.Content)
+		if len(newVNode.Children) == 0 {
+			// No children: update text content directly.
+			// Setting textContent wipes out all child nodes, so only do this when there are none.
+			if oldVNode.Content != newVNode.Content {
+				domElement.Set("textContent", newVNode.Content)
+			}
+		} else if oldVNode.Content != "" {
+			// New VNode has children but old had text content set via textContent.
+			// Clear the text so children can be patched in cleanly without the
+			// old text node remaining in the DOM alongside the new child elements.
+			domElement.Set("textContent", "")
 		}
 	}
 
