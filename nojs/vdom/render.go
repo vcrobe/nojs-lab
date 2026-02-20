@@ -626,21 +626,24 @@ func patchChildren(domElement js.Value, oldChildren, newChildren []*VNode) {
 		minLen = newLen
 	}
 
-	// Get the DOM children
+	// Get the DOM children (live NodeList).
 	domChildren := domElement.Get("childNodes")
 
-	// Patch existing children
+	// domIndex tracks the actual DOM child position. nil VNodes have no DOM counterpart,
+	// so the DOM index diverges from the VDOM index whenever nils are present.
+	domIndex := 0
+
+	// Patch existing children up to minLen
 	for i := 0; i < minLen; i++ {
 		oldChild := oldChildren[i]
 		newChild := newChildren[i]
 
-		// Handle case where old was nil but new is not (e.g., conditional rendering)
 		if oldChild == nil && newChild != nil {
+			// Old was absent from DOM; insert new node at the current DOM position.
 			newChildEl := createElement(newChild)
 			if newChildEl.Truthy() {
-				// Find the correct position to insert
-				if i < domChildren.Length() {
-					refChild := domChildren.Call("item", i)
+				if domIndex < domChildren.Length() {
+					refChild := domChildren.Call("item", domIndex)
 					if refChild.Truthy() {
 						domElement.Call("insertBefore", newChildEl, refChild)
 					} else {
@@ -649,25 +652,28 @@ func patchChildren(domElement js.Value, oldChildren, newChildren []*VNode) {
 				} else {
 					domElement.Call("appendChild", newChildEl)
 				}
+				domIndex++
 			}
 		} else if oldChild != nil && newChild == nil {
-			// Handle case where old existed but new is nil (e.g., conditional hiding)
+			// Old existed in DOM; remove the node at the current DOM position.
 			deepReleaseCallbacks(oldChild)
-			childElement := domChildren.Call("item", i)
+			childElement := domChildren.Call("item", domIndex)
 			if childElement.Truthy() {
 				domElement.Call("removeChild", childElement)
 			}
+			// Don't increment domIndex: after removal the next node slides into this slot.
 		} else if oldChild != nil && newChild != nil {
-			// Both exist, normal patching
-			childElement := domChildren.Call("item", i)
+			// Both exist — patch the DOM node at the current DOM position.
+			childElement := domChildren.Call("item", domIndex)
 			if childElement.Truthy() {
 				patchElement(childElement, oldChild, newChild)
 			}
+			domIndex++
 		}
-		// If both are nil, nothing to do
+		// Both nil: no DOM node involved, domIndex unchanged.
 	}
 
-	// Add new children if newChildren is longer
+	// Add new children if newChildren is longer.
 	if newLen > oldLen {
 		for i := oldLen; i < newLen; i++ {
 			newChild := createElement(newChildren[i])
@@ -677,15 +683,18 @@ func patchChildren(domElement js.Value, oldChildren, newChildren []*VNode) {
 		}
 	}
 
-	// Remove extra children if oldChildren is longer
+	// Remove extra children if oldChildren is longer.
+	// After the minLen loop, domIndex points to the first extra old DOM node.
+	// For each non-nil extra old child, remove the DOM node at that position.
 	if oldLen > newLen {
-		for i := oldLen - 1; i >= newLen; i-- {
-			// Release callbacks before removing
-			deepReleaseCallbacks(oldChildren[i])
-
-			childElement := domChildren.Call("item", i)
-			if childElement.Truthy() {
-				domElement.Call("removeChild", childElement)
+		for i := newLen; i < oldLen; i++ {
+			if oldChildren[i] != nil {
+				deepReleaseCallbacks(oldChildren[i])
+				childElement := domChildren.Call("item", domIndex)
+				if childElement.Truthy() {
+					domElement.Call("removeChild", childElement)
+				}
+				// Don't increment domIndex after removal.
 			}
 		}
 	}
