@@ -56,7 +56,8 @@ type componentInfo struct {
 
 // compileOptions holds compiler-wide options passed from CLI flags.
 type compileOptions struct {
-	DevMode bool // Enable development mode (warnings, verbose errors, panic on lifecycle failures)
+	DevMode          bool           // Enable development mode (warnings, verbose errors, panic on lifecycle failures)
+	ComponentCounter map[string]int // Template-wide counter per component type for unique RenderChild keys
 }
 
 // loopContext holds information about variables available in a loop scope.
@@ -971,6 +972,13 @@ func compileComponentTemplate(comp componentInfo, componentMap map[string]compon
 	// Collect components used from other packages
 	usedPackages := collectUsedComponents(rootElement, componentMap, comp)
 
+	// Initialize template-wide component counter so every RenderChild key is unique
+	// regardless of where in the tree the component appears. Using sibling-position
+	// (childCount) would assign the same key to components at the same depth across
+	// different parent containers (e.g. multiple RouterLinks each being the 3rd child
+	// of their respective parent divs all get "RouterLink_3").
+	opts.ComponentCounter = make(map[string]int)
+
 	// Generate code for a single root node
 	generatedCode := generateNodeCode(rootElement, "c", componentMap, comp, htmlString, opts, nil)
 
@@ -1811,12 +1819,18 @@ func generateNodeCode(n *html.Node, receiver string, componentMap map[string]com
 					// Use the trackBy value in the key
 					key = fmt.Sprintf(`%s_" + fmt.Sprintf("%%v", %s) + "`, compInfo.PascalName, trackByExpr)
 				} else {
-					// Fallback: use simple counter
-					key = fmt.Sprintf("%s_%d", compInfo.PascalName, childCount(n.Parent, n))
+					// Fallback: use a template-wide counter so keys are unique across the whole template
+					count := opts.ComponentCounter[compInfo.PascalName]
+					opts.ComponentCounter[compInfo.PascalName]++
+					key = fmt.Sprintf("%s_%d", compInfo.PascalName, count)
 				}
 			} else {
-				// Not in a loop: use simple counter
-				key = fmt.Sprintf("%s_%d", compInfo.PascalName, childCount(n.Parent, n))
+				// Not in a loop: use a template-wide counter so keys are unique across the whole template
+				// (sibling-position would give the same key to components at the same depth in different
+				// parent containers, e.g. multiple RouterLinks each at position 3 all become RouterLink_3)
+				count := opts.ComponentCounter[compInfo.PascalName]
+				opts.ComponentCounter[compInfo.PascalName]++
+				key = fmt.Sprintf("%s_%d", compInfo.PascalName, count)
 			}
 
 			// Determine if we need a qualified name (cross-package reference)
