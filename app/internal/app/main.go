@@ -5,9 +5,8 @@ package main
 import (
 	sharedlayouts "github.com/vcrobe/app/internal/app/components/shared/layouts"
 	"github.com/vcrobe/app/internal/app/context"
+	router "github.com/vcrobe/nojs-router"
 	"github.com/vcrobe/nojs/console"
-	"github.com/vcrobe/nojs/core"
-	"github.com/vcrobe/nojs/router"
 	"github.com/vcrobe/nojs/runtime"
 )
 
@@ -35,7 +34,7 @@ func main() {
 	registerRoutes(routerEngine, mainLayout, mainLayoutCtx)
 
 	// Create AppShell to wrap the router's page rendering
-	appShell := core.NewAppShell(mainLayout)
+	appShell := router.NewAppShell(mainLayout)
 	renderer.SetCurrentComponent(appShell, "app-shell")
 	renderer.ReRender()
 

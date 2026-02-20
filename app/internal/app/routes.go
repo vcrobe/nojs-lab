@@ -12,7 +12,7 @@ import (
 	"github.com/vcrobe/app/internal/app/components/pages/admin/users"
 	sharedlayouts "github.com/vcrobe/app/internal/app/components/shared/layouts"
 	"github.com/vcrobe/app/internal/app/context"
-	"github.com/vcrobe/nojs/router"
+	router "github.com/vcrobe/nojs-router"
 	"github.com/vcrobe/nojs/runtime"
 )
 

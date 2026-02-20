@@ -28,7 +28,7 @@ type Engine struct {
 	popstateListener js.Func
 }
 
-// New creates a new router engine.
+// NewEngine creates a new router engine.
 // The renderer can be set later via SetRenderer if needed.
 func NewEngine(renderer runtime.Renderer) *Engine {
 	return &Engine{
@@ -157,18 +157,12 @@ func (e *Engine) navigateInternal(path string, skipPushState bool) error {
 	}
 
 	// Notify route change callback to update AppShell state.
-	// AppShell.SetPage will call StateHasChanged() to trigger a re-render.
-	// The RenderChild mechanism ensures layouts are reused efficiently,
-	// and VDOM patching only updates what actually changed.
 	if e.onRouteChange != nil {
-		// Pass the full chain to AppShell so it can handle all layers correctly
-		// This includes the root layout, any preserved sublayouts, and new components
-		key := fmt.Sprintf("%s:%d", path, pivot) // Unique key includes pivot for reconciliation
+		key := fmt.Sprintf("%s:%d", path, pivot)
 		console.Log("[Engine.Navigate] Calling onRouteChange with", len(newInstances), "components, key:", key)
 		e.onRouteChange(newInstances, key)
 		console.Log("[Engine.Navigate] AppShell will handle rendering via StateHasChanged")
 
-		// Update state and return - AppShell's StateHasChanged handles the rendering
 		e.currentPath = path
 		e.currentRoute = targetRoute
 		e.activeChain = targetRoute.Chain
@@ -176,18 +170,14 @@ func (e *Engine) navigateInternal(path string, skipPushState bool) error {
 		e.pivotPoint = pivot
 		return nil
 	}
+
 	// Fallback: if no callback (non-AppShell apps), do scoped update
-	// Trigger update at pivot boundary
 	if pivot > 0 {
-		// Scoped update: parent layout re-renders with new slot content
-		// Only the slot subtree is diffed/patched (efficient!)
 		e.renderer.ReRenderSlot(newInstances[pivot-1])
 	} else {
-		// Full re-render: new root layout
 		e.renderer.ReRender()
 	}
 
-	// Update state
 	e.currentPath = path
 	e.currentRoute = targetRoute
 	e.activeChain = targetRoute.Chain
@@ -198,28 +188,20 @@ func (e *Engine) navigateInternal(path string, skipPushState bool) error {
 }
 
 // calculatePivot finds the first index where current and target chains differ by TypeID.
-// All components before the pivot point have matching TypeIDs and are preserved.
-// All components at or after the pivot point are recreated.
 func (e *Engine) calculatePivot(targetChain []ComponentMetadata) int {
 	minLen := len(e.activeChain)
 	if len(targetChain) < minLen {
 		minLen = len(targetChain)
 	}
-
-	// Compare TypeIDs from root to leaf
 	for i := 0; i < minLen; i++ {
 		if e.activeChain[i].TypeID != targetChain[i].TypeID {
-			return i // First mismatch is pivot point
+			return i
 		}
 	}
-
-	// All matched up to shorter chain length
 	return minLen
 }
 
 // findMatchingRoute searches for a route that matches the given path.
-// It iterates through all registered routes and checks if the pattern matches.
-// Returns nil if no matching route is found.
 func (e *Engine) findMatchingRoute(path string) *Route {
 	for _, route := range e.routes {
 		if e.matchesPattern(route.Path, path) {
@@ -231,19 +213,10 @@ func (e *Engine) findMatchingRoute(path string) *Route {
 
 // matchesPattern checks if an actual path matches a route pattern.
 // The pattern can contain parameters in curly braces, e.g., "/blog/{year}".
-// Returns true if the path matches the pattern.
-//
-// Examples:
-//
-//	matchesPattern("/blog/{year}", "/blog/2026") returns true
-//	matchesPattern("/blog/{year}", "/blog/2026/extras") returns false
-//	matchesPattern("/users/{id}/posts/{postId}", "/users/42/posts/100") returns true
 func (e *Engine) matchesPattern(pattern, path string) bool {
-	// Normalize paths (remove trailing slashes for comparison)
 	pattern = strings.TrimSuffix(pattern, "/")
 	path = strings.TrimSuffix(path, "/")
 
-	// Handle root path specially
 	if pattern == "" {
 		pattern = "/"
 	}
@@ -251,33 +224,22 @@ func (e *Engine) matchesPattern(pattern, path string) bool {
 		path = "/"
 	}
 
-	// Exact match for simple paths
 	if pattern == path {
 		return true
 	}
 
-	// Split into segments
 	patternParts := strings.Split(strings.Trim(pattern, "/"), "/")
 	pathParts := strings.Split(strings.Trim(path, "/"), "/")
 
-	// Must have same number of segments
 	if len(patternParts) != len(pathParts) {
 		return false
 	}
 
-	// Check each segment
 	for i := range patternParts {
-		patternSegment := patternParts[i]
-		pathSegment := pathParts[i]
-
-		// Check if this is a parameter placeholder
-		if strings.HasPrefix(patternSegment, "{") && strings.HasSuffix(patternSegment, "}") {
-			// This is a parameter - it matches any value
+		if strings.HasPrefix(patternParts[i], "{") && strings.HasSuffix(patternParts[i], "}") {
 			continue
 		}
-
-		// Not a parameter - must match exactly
-		if patternSegment != pathSegment {
+		if patternParts[i] != pathParts[i] {
 			return false
 		}
 	}
@@ -286,18 +248,10 @@ func (e *Engine) matchesPattern(pattern, path string) bool {
 }
 
 // extractParams parses URL parameters from a path based on route pattern.
-// Returns a map of parameter names to their values extracted from the URL.
-//
-// Example:
-//
-//	extractParams("/blog/{year}", "/blog/2026") returns {"year": "2026"}
-//	extractParams("/users/{id}/posts/{postId}", "/users/42/posts/100") returns {"id": "42", "postId": "100"}
 func (e *Engine) extractParams(routePath, actualPath string) map[string]string {
-	// Normalize paths (remove trailing slashes for comparison)
 	routePath = strings.TrimSuffix(routePath, "/")
 	actualPath = strings.TrimSuffix(actualPath, "/")
 
-	// Handle root path specially
 	if routePath == "" {
 		routePath = "/"
 	}
@@ -310,13 +264,11 @@ func (e *Engine) extractParams(routePath, actualPath string) map[string]string {
 
 	params := make(map[string]string)
 
-	// Extract parameters from matching segments
 	for i := range routeParts {
 		if i >= len(actualParts) {
 			break
 		}
 		if strings.HasPrefix(routeParts[i], "{") && strings.HasSuffix(routeParts[i], "}") {
-			// This is a parameter placeholder - extract the parameter name and value
 			paramName := strings.Trim(routeParts[i], "{}")
 			params[paramName] = actualParts[i]
 		}
@@ -340,27 +292,22 @@ func (e *Engine) CurrentPivotPoint() int {
 }
 
 // Start initializes the router and handles browser history.
-// The onChange callback is invoked when navigation occurs to update the renderer's
-// current component. This implements the NavigationManager interface.
+// This implements the NavigationManager interface.
 func (e *Engine) Start(onChange func(chain []runtime.Component, key string)) error {
 	e.mu.Lock()
 	e.onRouteChange = onChange
 	e.mu.Unlock()
 
-	// Set up popstate listener for browser back/forward buttons
 	e.popstateListener = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		console.Log("[Engine] popstate event fired")
-		// Read current path from browser
 		currentPath := js.Global().Get("location").Get("pathname").String()
 		console.Log("[Engine] popstate path:", currentPath)
-		// Navigate without pushing state (URL already changed)
 		e.navigateInternal(currentPath, true)
 		return nil
 	})
 	js.Global().Call("addEventListener", "popstate", e.popstateListener)
 	console.Log("[Engine] popstate listener registered")
 
-	// Navigate to the current browser path on initial load
 	initialPath := js.Global().Get("location").Get("pathname").String()
 	console.Log("[Engine.Start] Initial path:", initialPath)
 	if initialPath == "" {
@@ -371,7 +318,6 @@ func (e *Engine) Start(onChange func(chain []runtime.Component, key string)) err
 
 // GetComponentForPath resolves a URL path to its component.
 // This implements the NavigationManager interface.
-// Returns the leaf component (page) for the route, or nil if not found.
 func (e *Engine) GetComponentForPath(path string) (runtime.Component, bool) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -385,17 +331,12 @@ func (e *Engine) GetComponentForPath(path string) (runtime.Component, bool) {
 		return nil, false
 	}
 
-	// Extract URL parameters from route pattern
 	params := e.extractParams(targetRoute.Path, path)
-
-	// Return the leaf component (last in chain)
-	// Create a new instance to return
 	leaf := targetRoute.Chain[len(targetRoute.Chain)-1]
 	return leaf.Factory(params), true
 }
 
 // Cleanup releases resources held by the engine.
-// Call this when the engine is no longer needed to prevent memory leaks.
 func (e *Engine) Cleanup() {
 	if !e.popstateListener.IsUndefined() {
 		js.Global().Call("removeEventListener", "popstate", e.popstateListener)
