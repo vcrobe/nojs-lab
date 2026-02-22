@@ -2096,6 +2096,9 @@ func generateNodeCode(n *html.Node, receiver string, componentMap map[string]com
 				}
 				return fmt.Sprintf("vdom.NewVNode(%s, %s, []*vdom.VNode{%s}, \"\")", strconv.Quote(tagName), attrsMapStr, childrenStr)
 			}
+		case "img", "br", "hr", "wbr":
+			// Void elements — no children or text content
+			return fmt.Sprintf("vdom.NewVNode(%s, %s, nil, \"\")", strconv.Quote(tagName), attrsMapStr)
 		default:
 			return `vdom.Div(nil)` // Default to an empty div for unknown tags
 		}

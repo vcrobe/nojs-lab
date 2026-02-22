@@ -474,8 +474,31 @@ func createElement(n *VNode) js.Value {
 		return el
 
 	default:
-		console.Error("Unsupported tag: ", n.Tag)
-		return js.Undefined()
+		// Generic fallback: create any HTML element by tag name, set attributes, append children.
+		// This handles void elements like <img>, <br>, <hr> as well as any future tags.
+		el := doc.Call("createElement", n.Tag)
+
+		if n.Attributes != nil {
+			for k, v := range n.Attributes {
+				setAttributeValue(el, k, v)
+			}
+			attachEventListeners(el, n, n.Attributes)
+		}
+
+		if n.Content != "" {
+			el.Set("textContent", n.Content)
+		}
+
+		if n.Children != nil {
+			for _, child := range n.Children {
+				childEl := createElement(child)
+				if childEl.Truthy() {
+					el.Call("appendChild", childEl)
+				}
+			}
+		}
+
+		return el
 	}
 }
 
