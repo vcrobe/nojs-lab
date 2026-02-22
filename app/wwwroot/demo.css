@@ -80,6 +80,33 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   font-size: 22px;
 }
 
+.brand-tech-logos {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.sidebar-brand-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.brand-tech-logo {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.brand-tech-sep {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1;
+}
+
 .brand-name {
   font-size: 18px;
   font-weight: 700;
