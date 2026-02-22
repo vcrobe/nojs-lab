@@ -74,7 +74,34 @@ Using `.html` would create ambiguity — a project's component directory could c
 
 ---
 
-## 4. Explicit `StateHasChanged()` Instead of Automatic Reactivity
+## 4. Go Instead of TinyGo
+
+### The decision
+
+The framework targets the standard **Go toolchain** (`GOOS=js GOARCH=wasm`) rather than [TinyGo](https://tinygo.org/) for compiling to WebAssembly.
+
+### Why
+
+TinyGo produces significantly smaller `.wasm` binaries and is an appealing target for production browser delivery. However, it achieves this by supporting only a subset of the Go language and standard library. During active framework development, these gaps would become blockers:
+
+- Incomplete `reflect` support limits runtime introspection used by the framework internals.
+- Some standard library packages (e.g. `go/packages`, `net/html`) are unavailable or partially supported.
+- Certain language features (e.g. complex interface patterns, full goroutine semantics) behave differently or are unsupported.
+
+While stabilizing the framework, having the **full Go language and standard library** at our disposal is essential. It allows us to move fast, use familiar tooling, and avoid working around TinyGo's constraints before the core model is even proven.
+
+### Future direction
+
+Once the framework reaches a stable, production-ready state, TinyGo will be evaluated as an alternative compilation target to reduce the final `.wasm` binary size for end users. This review will include assessing which framework features are compatible, whether any abstractions need to be adjusted, and what the real-world size and performance trade-offs look like.
+
+### Trade-offs
+
+- Standard Go produces larger `.wasm` binaries compared to TinyGo, which can affect initial page load time.
+- This is an accepted cost during development; binary size optimisation is deferred to the production-readiness phase.
+
+---
+
+## 5. Explicit `StateHasChanged()` Instead of Automatic Reactivity
 
 ### The decision
 
@@ -96,7 +123,7 @@ Explicit `StateHasChanged()` is a deliberate design choice aligned with the fram
 
 ---
 
-## 5. Component Type Names Must Be Exported (Uppercase First Letter)
+## 6. Component Type Names Must Be Exported (Uppercase First Letter)
 
 ### The decision
 
@@ -110,7 +137,7 @@ Additionally, component tags in templates are identified by their uppercase firs
 
 ---
 
-## 6. Single-Slot Content Projection (No Named Slots)
+## 7. Single-Slot Content Projection (No Named Slots)
 
 ### The decision
 
