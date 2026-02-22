@@ -350,6 +350,14 @@ The compiler validates at build time that:
 - The method's parameter type matches the event (e.g., `func()`, `func(events.ClickEventArgs)`).
 - The event is valid for the HTML element.
 
+### Supported HTML Elements in Templates
+
+The compiler has explicit codegen paths for the most common HTML elements (`div`, `p`, `button`, `input`, `select`, `option`, `textarea`, `form`, `ul`, `ol`, `li`, `h1`–`h6`, `a`, `nav`, `span`, `section`, `article`, `header`, `footer`, `main`, `aside`).
+
+Void/self-closing elements (`img`, `br`, `hr`, `wbr`) are handled as a dedicated group — they emit `vdom.NewVNode(tag, attrs, nil, "")` with no children or text content, which matches HTML5 semantics.
+
+> **Important:** Any tag that does not match a known case in the compiler's switch falls through to a `default` that emits `vdom.Div(nil)` — an empty, attribute-less `<div>`. This means **unrecognised tags are silently replaced** with an empty div at compile time, producing no visible output and no error. If an element is not rendering as expected, verify that its tag has an explicit case in `compiler/compiler.go`. The straightforward fix is to add a `case` for the missing tag, or to use one of the already-supported elements.
+
 ### Compile-Time Validation
 
 The compiler reports errors for:
