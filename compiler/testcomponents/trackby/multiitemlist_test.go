@@ -6,7 +6,7 @@ package trackby
 import (
 	"testing"
 
-	"github.com/ForgeLogic/nojs/testcomponents"
+	"github.com/ForgeLogic/nojs-compiler/testcomponents"
 	"github.com/ForgeLogic/nojs/vdom"
 )
 
