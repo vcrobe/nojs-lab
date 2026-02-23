@@ -85,9 +85,9 @@ This minimizes expensive DOM operations and maximizes performance.
 
 ### Template Compilation (In Development)
 HTML templates are being developed for Ahead-of-Time (AOT) compilation:
-- Parse `*.component.html` files with Go template syntax
+- Parse `*.gt.html` files with Go template syntax
 - Generate corresponding `Render()` methods automatically  
-- Support event binding (`go-on:click`) and data binding (`{c.count}`)
+- Support event binding (`@click`) and data binding (`{Count}`)
 - All parsing happens at build time, not runtime
 
 ### Application Data Flow
