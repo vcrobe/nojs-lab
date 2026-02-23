@@ -1,6 +1,10 @@
 package runtime
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/ForgeLogic/nojs/console"
+)
 
 // ComponentBase is a struct that components can embed to gain access to the
 // StateHasChanged method, which triggers a UI re-render.
@@ -29,14 +33,16 @@ func (b *ComponentBase) GetRenderer() Renderer {
 // triggers scoped re-render of only that slot. Otherwise, full re-render.
 func (b *ComponentBase) StateHasChanged() {
 	if b.renderer == nil {
-		println("StateHasChanged called, but renderer is nil (component not mounted?)")
+		console.Error("StateHasChanged called, but renderer is nil (component not mounted?)")
 		return
 	}
 
 	// Check if this component is in a layout's slot (in-memory tracking)
 	if b.slotParent != nil {
 		// Scoped re-render: only re-render the parent layout's slot content
-		b.renderer.ReRenderSlot(b.slotParent)
+		if err := b.renderer.ReRenderSlot(b.slotParent); err != nil {
+			console.Error("ReRenderSlot failed:", err.Error())
+		}
 		return
 	}
 
