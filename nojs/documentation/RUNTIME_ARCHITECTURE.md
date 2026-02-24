@@ -44,6 +44,8 @@ The `runtime` package is the **execution engine** of nojs. It owns:
 - Lifecycle interfaces (`Mountable`, `ParameterReceiver`, `Unmountable`, `PropUpdater`) that components opt into.
 - `RendererImpl` — the concrete WASM-only renderer that manages the component instance tree, drives the virtual DOM lifecycle (initial render, patch, clear), and wires up client-side navigation.
 
+> **Signals are out of scope for this package.** Cross-component and persistent application state is handled by `github.com/ForgeLogic/nojs/signals` (`Signal[T]`), which has no dependency on the runtime, VDOM, or renderer. See the [Signals documentation](./SIGNALS.md) for details.
+
 The package is deliberately split between build-tag-free files (interfaces / `ComponentBase`) and WASM-only files (`RendererImpl`, lifecycle dispatch) so that compiler-generated `Render()` methods and tests can be compiled on native platforms without a WASM toolchain.
 
 ---

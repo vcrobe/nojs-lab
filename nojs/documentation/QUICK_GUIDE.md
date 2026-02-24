@@ -12,7 +12,7 @@ A practical reference for using each implemented feature. Examples show the mini
 
 Every component must implement the `Component` interface: a `Render(Renderer) *vdom.VNode` method and embed `ComponentBase` (which provides `SetRenderer`).
 
-> **Prefer templates over hand-written `Render()` methods.** In normal usage you should never write `Render()` by hand. Instead, create a `MyComponent.gt.html` template alongside your Go struct and let the AOT compiler generate the `Render()` method for you (see [Section 6 — AOT Compiler](#6-aot-compiler)). Hand-writing `Render()` is only necessary for low-level framework internals or components with logic that cannot be expressed in a template (e.g., `AppShell`, `RouterLink`).
+> **Prefer templates over hand-written `Render()` methods.** In normal usage you should never write `Render()` by hand. Instead, create a `MyComponent.gt.html` template alongside your Go struct and let the AOT compiler generate the `Render()` method for you (see [Section 7 — AOT Compiler](#7-aot-compiler)). Hand-writing `Render()` is only necessary for low-level framework internals or components with logic that cannot be expressed in a template (e.g., `AppShell`, `RouterLink`).
 
 The minimal struct — with or without a template — always looks the same:
 
@@ -137,7 +137,53 @@ No code changes are needed; the build system selects the mode.
 
 ---
 
-## 3. Virtual DOM (VDOM)
+## 3. Signals
+
+Signals are reactive, type-safe values that live outside the component tree. They survive route transitions and component remounts, making them the right tool for shared or persistent application state.
+
+> See the full [Signals documentation](./SIGNALS.md) for the complete API reference, a comparison with component state, and thread-safety details.
+
+### Declaring signals
+
+Declare signals as package-level variables in a dedicated `appstate` package:
+
+```go
+// appstate/appstate.go
+package appstate
+
+import "github.com/ForgeLogic/nojs/signals"
+
+var Count    = signals.NewSignal(0)
+var Username = signals.NewSignal("")
+```
+
+### Reading and writing
+
+```go
+current := appstate.Count.Get()
+appstate.Count.Set(current + 1) // notifies all subscribers immediately
+```
+
+### Subscribing to changes
+
+Use `Subscribe` when a component must react to a signal change while it stays alive in the tree. **Always unsubscribe in `OnUnmount`** to prevent dangling references to destroyed components:
+
+```go
+func (c *MyComponent) OnMount() {
+    c.unsub = appstate.Count.Subscribe(func() {
+        c.localCount = appstate.Count.Get()
+        c.StateHasChanged()
+    })
+}
+
+func (c *MyComponent) OnUnmount() {
+    c.unsub()
+}
+```
+
+---
+
+## 4. Virtual DOM (VDOM)
 
 ### Helper Constructors
 
@@ -170,7 +216,7 @@ vdom.RenderToSelector("#app", myVNode)
 
 ---
 
-## 4. VDOM Diffing & Patching
+## 5. VDOM Diffing & Patching
 
 Patching happens automatically when `StateHasChanged()` or a navigation event triggers a re-render. Key behaviours to be aware of:
 
@@ -183,7 +229,7 @@ No manual diffing API is called from user code; `StateHasChanged()` and navigati
 
 ---
 
-## 5. Event System
+## 6. Event System
 
 ### Handling Events in Hand-Written Components
 
@@ -240,7 +286,7 @@ Use `@event` attributes in `.gt.html` — the compiler selects the correct adapt
 
 ---
 
-## 6. AOT Compiler
+## 7. AOT Compiler
 
 The compiler reads `*.gt.html` template files alongside their Go structs and generates `*.generated.go` files containing `Render()` methods. Run it as part of the build:
 
@@ -370,7 +416,7 @@ The compiler reports errors for:
 
 ---
 
-## 7. Content Projection (Slots)
+## 8. Content Projection (Slots)
 
 A layout component exposes a single `[]*vdom.VNode` field as its slot. The field name is irrelevant; the type is the signal.
 
@@ -404,7 +450,7 @@ When a page component inside a slot calls `StateHasChanged()`, the framework det
 
 ---
 
-## 8. Router
+## 9. Router
 
 ### Registering Routes
 
@@ -482,7 +528,7 @@ Use the built-in `RouterLink` component in templates for client-side navigation 
 
 ---
 
-## 9. Build System
+## 10. Build System
 
 ```bash
 make full        # compile AOT templates + build WASM + serve (dev mode, panics propagate)
@@ -504,7 +550,7 @@ The workspace uses a `go.work` file linking the `nojs` framework module, the `co
 
 ---
 
-## 10. JS ↔ Go Interop
+## 11. JS ↔ Go Interop
 
 ### Exporting a Go Function to JavaScript
 
