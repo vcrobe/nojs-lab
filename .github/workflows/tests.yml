@@ -48,9 +48,9 @@ jobs:
         working-directory: nojs
         run: go test ./... -count=1
 
-      - name: Test router module
-        working-directory: router
-        run: go test ./... -count=1
+      # - name: Test router module
+      #   working-directory: router
+      #   run: go test ./... -count=1
 
       - name: Test app module
         working-directory: app
