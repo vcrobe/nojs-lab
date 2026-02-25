@@ -1,4 +1,4 @@
-.PHONY: help wasm wasm-prod full full-prod clean serve
+.PHONY: help wasm wasm-prod full full-prod clean serve docs-install docs-build docs-serve
 
 # Variables
 COMPILER_PATH := github.com/ForgeLogic/nojs-compiler/cmd/nojsc
@@ -10,6 +10,8 @@ BUILD_TAGS := -tags=dev
 # Default serve command (override in Makefile.local)
 SERVE_CMD := python3 -m http.server 9090
 SERVE_DIR := ./app/wwwroot
+DOCS_VENV := ./.venv-docs
+DOCS_MKDOCS := $(DOCS_VENV)/bin/mkdocs
 
 # Load local developer overrides if present (gitignored)
 -include Makefile.local
@@ -65,3 +67,16 @@ clean:
 serve:
 	@echo "🚀 Starting development server..."
 	@cd $(SERVE_DIR) && $(SERVE_CMD)
+
+docs-install:
+	@echo "📚 Installing documentation dependencies..."
+	@python3 -m venv $(DOCS_VENV)
+	@$(DOCS_VENV)/bin/pip install -r requirements-docs.txt
+
+docs-build:
+	@echo "📚 Building documentation site..."
+	@$(DOCS_MKDOCS) build --strict
+
+docs-serve:
+	@echo "📚 Serving documentation site locally..."
+	@$(DOCS_MKDOCS) serve

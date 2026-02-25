@@ -20,6 +20,9 @@ compiler/compiler.exe
 # But do not ignore directories named "nojsc"
 !**/nojsc/
 
+.venv-docs
+site/
+
 compiler/aotcompiler
 core-dev.css
 todo.md

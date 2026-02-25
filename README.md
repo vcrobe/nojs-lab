@@ -178,7 +178,20 @@ func (c *Counter) Decrement() {
 
 ## 📖 Documentation
 
-Detailed guides are available in the [`nojs/documentation/`](nojs/documentation/) directory:
+Official documentation is published with **GitHub Pages + MkDocs**.
+
+- Site config: [`mkdocs.yml`](mkdocs.yml)
+- Source pages: [`docs/`](docs/)
+- Deploy workflow: [`.github/workflows/docs.yml`](.github/workflows/docs.yml)
+
+To run docs locally:
+
+```bash
+make docs-install
+make docs-serve
+```
+
+Detailed framework guides are available in the [`nojs/documentation/`](nojs/documentation/) directory:
 
 - **[Installation Guide](INSTALLATION.md)** — How to create a new project using nojs
 - **[Quick Guide](nojs/documentation/QUICK_GUIDE.md)** — Practical reference for all framework features

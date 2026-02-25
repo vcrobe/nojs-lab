@@ -1,0 +1,37 @@
+site_name: nojs Documentation
+site_description: Type-safe web framework for Go + WebAssembly
+site_url: https://vcrobe.github.io/nojs-lab/
+repo_name: vcrobe/nojs-lab
+repo_url: https://github.com/vcrobe/nojs-lab
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Architecture:
+      - Runtime Architecture: architecture/runtime-architecture.md
+      - Router Architecture: architecture/router-architecture.md
+      - Router Layouts: architecture/router-layouts.md
+  - Guides:
+      - Quick Guide: guides/quick-guide.md
+      - List Rendering: guides/list-rendering.md
+      - Inline Conditionals: guides/inline-conditionals.md
+      - Signals: guides/signals.md
+      - Text Node Rendering: guides/text-node-rendering.md
+  - Design:
+      - Manifesto: design/manifesto.md
+      - Design Decisions: design/design-decisions.md
