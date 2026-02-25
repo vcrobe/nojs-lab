@@ -1,139 +1,71 @@
-# Hello - nojs Framework Standalone Application
+# hello
 
-A minimal, stand-alone Go + WebAssembly application that demonstrates the core concepts of the nojs framework.
+`hello` is the **smallest possible demo app** for this framework.
 
-## Overview
+Its goal is to help a new user quickly understand the core flow:
 
-This is a simple "Hello World" application built with:
-- **Go + WebAssembly**: Compiles to WASM binary for browser execution
-- **Virtual DOM**: Uses the nojs vdom package for efficient DOM rendering  
-- **Component Model**: Demonstrates a reusable component pattern (HelloWorld component)
-- **Framework Integration**: References the nojs framework without coupling
+1. Write a component
+2. Use a template (`*.gt.html`)
+3. Compile templates into `Render()` code
+4. Build to WebAssembly and run in the browser
 
-## Project Structure
+## Why this module exists
 
-```
-hello/
-├── go.mod                   # Go module definition (references nojs)
-├── go.sum                   # Go dependencies
-├── main.go                  # WASM entrypoint (//go:build js || wasm)
-└── wwwroot/                 # Web assets
-    ├── index.html          # HTML shell
-    ├── style.css           # Application styling
-    ├── core.js             # Framework bootstrap and event handling
-    └── wasm_exec.js        # Go runtime bridge (vendored from Go toolchain)
-```
+This app must stay intentionally minimal so the essence of the framework is easy to grasp in a few minutes.
 
-## Building
+- No router usage
+- No advanced app architecture
+- No extra abstractions beyond what is required to render components
 
-Build the WebAssembly binary from the `hello` directory:
+If something can be removed without breaking the core demo purpose, it should be removed.
 
-```bash
-cd hello
-GOOS=js GOARCH=wasm go build -o wwwroot/main.wasm
-```
+## Scope of this demo
 
-Or use the workspace's build task if configured.
+Included:
+- Component rendering demonstration
+- Template compilation demonstration
+- WASM build + browser run
 
-## Running
+Excluded:
+- Router and route registration
+- Complex state flows
+- Production-level app structure
 
-1. **Build the WASM binary** (see above)
-2. **Serve the wwwroot directory** using any static HTTP server:
-   ```bash
-   cd wwwroot
-   python3 -m http.server 9090
-   ```
-3. **Open in browser**: `http://localhost:9090`
+## Run the hello demo
 
-You should see a purple gradient with a centered white card displaying:
-- "Hello from Go + WebAssembly"
-- A click counter
-- An interactive button
+From repository root:
 
-Clicking the button increments the counter and logs the current count to the browser console.
+1. Build templates and WASM (dev flow):
 
-## How It Works
+	```bash
+	make full
+	```
 
-### Component Architecture
+2. Serve the project (example):
 
-The `HelloWorld` struct implements a simple component:
+	```bash
+	make serve
+	```
 
-```go
-type HelloWorld struct {
-    count int
-}
+3. Open:
 
-func (h *HelloWorld) Render(r runtime.Renderer) *vdom.VNode {
-    // Returns virtual DOM tree representing the UI
-}
-```
+	```
+	http://localhost:9090/hello/wwwroot/
+	```
 
-### Virtual DOM Rendering
+## What to read in this module
 
-The `Render()` method returns a `vdom.VNode` tree describing the UI structure. The renderer then:
-1. Converts the virtual DOM to real DOM elements
-2. Mounts them into the `#app` selector
-3. Handles updates when component state changes
+- `hello/internal/app/main.go` — app entrypoint and component mount
+- `hello/internal/app/components/` — minimal component examples
+- `hello/wwwroot/index.html` — static host page
 
-### JS Interop
+## Keep it simple policy
 
-The `incrementClick` function is exposed to JavaScript, allowing the HTML button to call back into Go:
+This module is a learning artifact first.
 
-```go
-func incrementClick(this any, args []any) any {
-    if helloInstance != nil {
-        helloInstance.IncrementCount()
-    }
-    return nil
-}
-```
+When editing it, prefer:
+- fewer files
+- shorter code paths
+- explicit and readable examples
 
-The button's `onclick` handler calls `_onIncrementClick`, which is defined in `core.js` and bridges to the Go function.
-
-## Dependencies
-
-- `github.com/ForgeLogic/nojs`: Core framework (virtual DOM, runtime, console wrappers)
-- Go 1.25.1 or higher
-- Standard library only (no external dependencies beyond nojs)
-
-## Architecture Insights
-
-This application demonstrates:
-- **Separation of concerns**: Go logic separate from HTML structure
-- **Component isolation**: HelloWorld is self-contained and reusable
-- **Framework abstraction**: Uses nojs interfaces without tight coupling
-- **Minimal dependencies**: No CSS framework, bundler, or build tools required
-
-## Extending the Application
-
-To add more components:
-
-1. Create a new struct with a `Render()` method
-2. Return a `vdom.VNode` describing its UI
-3. Set it on the renderer with `renderer.SetCurrentComponent()`
-4. Export any event handlers needed via `js.Global().Set()`
-
-Example:
-
-```go
-type Counter struct {
-    count int
-}
-
-func (c *Counter) Render(r runtime.Renderer) *vdom.VNode {
-    // Build and return VNode tree
-}
-```
-
-## Notes
-
-- All Go files use `//go:build js || wasm` to compile only for WASM targets
-- The nojs framework types (`vdom.VNode`, `runtime.Renderer`, etc.) are build-tag-free (dev + wasm)
-- Uses relative path replacement in `go.mod` to reference the local nojs framework
-- `wasm_exec.js` is the Go runtime bridge—keep it in sync with your Go version
-
-## Further Reading
-
-- [nojs Documentation](../nojs/documentation/)
-- [Virtual DOM Design](../nojs/documentation/DESIGN_DECISIONS.md)
-- [Component Model](../nojs/documentation/QUICK_GUIDE.md)
+Avoid adding features here unless they are necessary to explain the framework basics.
