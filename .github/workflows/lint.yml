@@ -36,9 +36,6 @@ jobs:
       - name: Verify modules
         run: go work sync
 
-      # - name: Install staticcheck
-      #   run: go install honnef.co/go/tools/cmd/staticcheck@latest
-
       - name: Generate compiler test components
         working-directory: compiler
         run: go run ./cmd/nojsc -in=./testcomponents
@@ -48,7 +45,6 @@ jobs:
         with:
           version: v2.10.1
           working-directory: compiler
-          # This tells the linter to look at your whole workspace
           args: --timeout=1m
           
       - name: lint nojs module
