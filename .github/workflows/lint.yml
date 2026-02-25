@@ -33,7 +33,7 @@ jobs:
         run: go run ./cmd/nojsc -in=./testcomponents
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
           version: v2.10.1
           # This tells the linter to look at your whole workspace
