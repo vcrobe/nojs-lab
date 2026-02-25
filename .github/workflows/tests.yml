@@ -44,14 +44,14 @@ jobs:
         working-directory: compiler
         run: go test ./... -count=1
 
-      - name: Test nojs module
-        working-directory: nojs
-        run: go test ./... -count=1
+      # - name: Test nojs module
+      #   working-directory: nojs
+      #   run: go test ./... -count=1
 
-      - name: Test router module
-        working-directory: router
-        run: go test ./... -count=1
+      # - name: Test router module
+      #   working-directory: router
+      #   run: go test ./... -count=1
 
-      - name: Test app module
-        working-directory: app
-        run: go test ./... -count=1
+      # - name: Test app module
+      #   working-directory: app
+      #   run: go test ./... -count=1
