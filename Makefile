@@ -2,14 +2,14 @@
 
 # Variables
 COMPILER_PATH := github.com/ForgeLogic/nojs-compiler/cmd/nojsc
-COMPONENTS_DIR := ./app/internal/app/components
-WASM_OUTPUT := ./app/wwwroot/main.wasm
-MAIN_PATH := ./app/internal/app
+COMPONENTS_DIR := ./hello/internal/app/components
+WASM_OUTPUT := ./hello/wwwroot/main.wasm
+MAIN_PATH := ./hello/internal/app
 BUILD_TAGS := -tags=dev
 
 # Default serve command (override in Makefile.local)
 SERVE_CMD := python3 -m http.server 9090
-SERVE_DIR := ./app/wwwroot
+SERVE_DIR := ./hello/wwwroot
 
 # Load local developer overrides if present (gitignored)
 -include Makefile.local
