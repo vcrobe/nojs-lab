@@ -1,4 +1,4 @@
-name: tests
+name: CI / Tests
 
 on:
   pull_request:
@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   test:
+    name: CI / Tests
     runs-on: ubuntu-latest
 
     steps:

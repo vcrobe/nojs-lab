@@ -1,4 +1,4 @@
-name: lint
+name: CI / Lint
 
 on:
   pull_request:
@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   lint:
+    name: CI / Lint
     runs-on: ubuntu-latest
 
     steps:
