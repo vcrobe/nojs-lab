@@ -27,6 +27,11 @@ jobs:
         with:
           go-version: '1.25.1'
           cache: true
+          cache-dependency-path: |
+            app/go.sum
+            compiler/go.sum
+            nojs/go.sum
+            router/go.sum
 
       - name: Verify modules
         run: go work sync
