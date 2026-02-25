@@ -1,0 +1,70 @@
+name: lint
+
+on:
+  pull_request:
+    branches:
+      - '**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.1'
+          cache: true
+
+      - name: Verify modules
+        run: go work sync
+
+      - name: Install staticcheck
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+
+      - name: Generate compiler test components
+        working-directory: compiler
+        run: go run ./cmd/nojsc -in=./testcomponents
+
+      - name: Vet compiler module
+        working-directory: compiler
+        run: go vet ./...
+
+      - name: Vet nojs module
+        working-directory: nojs
+        run: go vet ./...
+
+      - name: Vet router module
+        working-directory: router
+        run: go vet ./...
+
+      - name: Vet app module
+        working-directory: app
+        run: go vet ./...
+
+      - name: Staticcheck compiler module
+        working-directory: compiler
+        run: $(go env GOPATH)/bin/staticcheck ./...
+
+      - name: Staticcheck nojs module
+        working-directory: nojs
+        run: $(go env GOPATH)/bin/staticcheck ./...
+
+      - name: Staticcheck router module
+        working-directory: router
+        run: $(go env GOPATH)/bin/staticcheck ./...
+
+      - name: Staticcheck app module
+        working-directory: app
+        run: $(go env GOPATH)/bin/staticcheck ./...
