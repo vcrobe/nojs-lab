@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   test:
-    name: CI / Tests
+    name: Tests
     runs-on: ubuntu-latest
 
     steps:

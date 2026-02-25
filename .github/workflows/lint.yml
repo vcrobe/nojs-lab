@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   lint:
-    name: CI / Lint
+    name: golangci-lint
     runs-on: ubuntu-latest
 
     steps:
@@ -43,7 +43,7 @@ jobs:
         working-directory: compiler
         run: go run ./cmd/nojsc -in=./testcomponents
 
-      - name: golangci-lint
+      - name: lint compiler module
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.10.1
@@ -51,3 +51,23 @@ jobs:
           # This tells the linter to look at your whole workspace
           args: --timeout=1m
           
+      - name: lint nojs module
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.10.1
+          working-directory: nojs
+          args: --timeout=1m
+
+      - name: lint router module
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.10.1
+          working-directory: router
+          args: --timeout=1m
+
+      - name: lint app module
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.10.1
+          working-directory: app
+          args: --timeout=1m
