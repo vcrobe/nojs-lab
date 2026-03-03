@@ -9,6 +9,13 @@ nojs is a type-safe web framework for building browser applications in pure Go u
 - Component model with idiomatic Go structs
 - AOT compiler that transforms `*.gt.html` into generated `Render()` methods
 
+## 🎮 Live Demo
+
+Want to see **nojs** in action? Check out the interactive demo at [forgelogic.github.io/nojs/demo](https://forgelogic.github.io/nojs/demo).
+
+The demo showcases core framework features—components, routing, event handling, and list rendering—all running entirely in Go-compiled WebAssembly.
+
+
 ## Project Status
 
 nojs is currently MVP/experimental. APIs can change while the framework evolves.
