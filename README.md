@@ -63,7 +63,7 @@ The demo showcases core framework features—components, routing, event handling
 
 ### Running the demo app
 
-For detailed instructions on running the demo app, see the [Getting Started Guide](docs/getting-started.md).
+For detailed instructions on running the demo app, see the [Getting Started Guide](https://forgelogic.github.io/nojs/getting-started/).
 
 ---
 
