@@ -3,7 +3,7 @@
         <div class="render-badge">Renders: {RenderCount}</div>
         <h1>🔗 Router Params</h1>
         <p>
-            Route parameters are extracted from URL patterns like <span class="code">/demo/router/{id}</span>
+            Route parameters are extracted from URL patterns like <span class="code">/router/{id}</span>
             and passed to the component factory. Change the URL or click a link below — the layout never
             remounts (pivot algorithm), only this page component is replaced.
         </p>
@@ -13,7 +13,7 @@
         <div class="demo-box">
             <div class="section-title">Current Route Parameter</div>
             <div class="route-display">
-                <div class="route-path">Route: /demo/router/<span class="slot-highlight">{ID}</span></div>
+                <div class="route-path">Route: /router/<span class="slot-highlight">{ID}</span></div>
                 <div class="route-param-value">{ID}</div>
             </div>
         </div>
@@ -21,12 +21,12 @@
         <div class="demo-box">
             <div class="section-title">Navigate via RouterLink</div>
             <div class="param-links">
-                <RouterLink Href="/demo/router/42">id = 42</RouterLink>
-                <RouterLink Href="/demo/router/go-wasm">id = go-wasm</RouterLink>
-                <RouterLink Href="/demo/router/hello">id = hello</RouterLink>
-                <RouterLink Href="/demo/router/framework">id = framework</RouterLink>
-                <RouterLink Href="/demo/router/nojs">id = nojs</RouterLink>
-                <RouterLink Href="/demo/router/2026">id = 2026</RouterLink>
+                <RouterLink Href="/router/42">id = 42</RouterLink>
+                <RouterLink Href="/router/go-wasm">id = go-wasm</RouterLink>
+                <RouterLink Href="/router/hello">id = hello</RouterLink>
+                <RouterLink Href="/router/framework">id = framework</RouterLink>
+                <RouterLink Href="/router/nojs">id = nojs</RouterLink>
+                <RouterLink Href="/router/2026">id = 2026</RouterLink>
             </div>
         </div>
 

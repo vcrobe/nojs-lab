@@ -32,5 +32,5 @@ func (c *RouterParamsPage) GoToNext() {
 	appstate.NextIDIndex.Set((nextIdx + 1) % len(routerDemoIDs))
 
 	// navigate to the next ID route
-	c.Navigate("/demo/router/" + next)
+	c.Navigate("/router/" + next)
 }

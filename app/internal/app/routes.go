@@ -24,49 +24,49 @@ func registerRoutes(routerEngine *router.Engine, mainLayout *sharedlayouts.MainL
 			},
 		},
 		{
-			Path: "/demo/counter",
+			Path: "/counter",
 			Chain: []router.ComponentMetadata{
 				{Factory: ml, TypeID: MainLayout_TypeID},
 				{Factory: func(p map[string]string) runtime.Component { return &pages.CounterPage{} }, TypeID: CounterPage_TypeID},
 			},
 		},
 		{
-			Path: "/demo/lifecycle",
+			Path: "/lifecycle",
 			Chain: []router.ComponentMetadata{
 				{Factory: ml, TypeID: MainLayout_TypeID},
 				{Factory: func(p map[string]string) runtime.Component { return &pages.LifecyclePage{} }, TypeID: LifecyclePage_TypeID},
 			},
 		},
 		{
-			Path: "/demo/forms",
+			Path: "/forms",
 			Chain: []router.ComponentMetadata{
 				{Factory: ml, TypeID: MainLayout_TypeID},
 				{Factory: func(p map[string]string) runtime.Component { return &pages.FormsPage{} }, TypeID: FormsPage_TypeID},
 			},
 		},
 		{
-			Path: "/demo/conditionals",
+			Path: "/conditionals",
 			Chain: []router.ComponentMetadata{
 				{Factory: ml, TypeID: MainLayout_TypeID},
 				{Factory: func(p map[string]string) runtime.Component { return &pages.ConditionalsPage{} }, TypeID: ConditionalsPage_TypeID},
 			},
 		},
 		{
-			Path: "/demo/lists",
+			Path: "/lists",
 			Chain: []router.ComponentMetadata{
 				{Factory: ml, TypeID: MainLayout_TypeID},
 				{Factory: func(p map[string]string) runtime.Component { return &pages.ListsPage{} }, TypeID: ListsPage_TypeID},
 			},
 		},
 		{
-			Path: "/demo/slots",
+			Path: "/slots",
 			Chain: []router.ComponentMetadata{
 				{Factory: ml, TypeID: MainLayout_TypeID},
 				{Factory: func(p map[string]string) runtime.Component { return &pages.SlotsPage{} }, TypeID: SlotsPage_TypeID},
 			},
 		},
 		{
-			Path: "/demo/router/{id}",
+			Path: "/router/{id}",
 			Chain: []router.ComponentMetadata{
 				{Factory: ml, TypeID: MainLayout_TypeID},
 				{Factory: func(p map[string]string) runtime.Component { return &pages.RouterParamsPage{ID: p["id"]} }, TypeID: RouterParamsPage_TypeID},
