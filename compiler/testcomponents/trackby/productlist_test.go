@@ -41,6 +41,7 @@ func TestProductList_DotNotationTrackBy_InitialRender(t *testing.T) {
 	}
 	if ulNode == nil {
 		t.Fatalf("Expected <ul> element not found in root children")
+		return // unreachable, but satisfies staticcheck SA5011
 	}
 
 	// Assert: Verify the number of list items matches the products

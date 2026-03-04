@@ -206,9 +206,10 @@ func generateNodeCode(n *html.Node, receiver string, componentMap map[string]com
 			var textBuilder strings.Builder
 			hasElementChildren := false
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
-				if c.Type == html.TextNode {
+				switch c.Type {
+				case html.TextNode:
 					textBuilder.WriteString(c.Data)
-				} else if c.Type == html.ElementNode {
+				case html.ElementNode:
 					hasElementChildren = true
 				}
 			}

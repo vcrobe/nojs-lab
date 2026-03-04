@@ -41,7 +41,7 @@ func generateConditionalCode(n *html.Node, receiver string, componentMap map[str
 				os.Exit(1)
 			}
 
-			code.WriteString(fmt.Sprintf("if %s.%s {\n", receiver, propDesc.Name))
+			fmt.Fprintf(&code, "if %s.%s {\n", receiver, propDesc.Name)
 			foundContent := false
 			for cc := c.FirstChild; cc != nil; cc = cc.NextSibling {
 				childCode := generateNodeCode(cc, receiver, componentMap, currentComp, htmlSource, opts, loopCtx)
@@ -81,7 +81,7 @@ func generateConditionalCode(n *html.Node, receiver string, componentMap map[str
 				os.Exit(1)
 			}
 
-			code.WriteString(fmt.Sprintf(" else if %s.%s {\n", receiver, propDesc.Name))
+			fmt.Fprintf(&code, " else if %s.%s {\n", receiver, propDesc.Name)
 			foundContent := false
 			for cc := c.FirstChild; cc != nil; cc = cc.NextSibling {
 				childCode := generateNodeCode(cc, receiver, componentMap, currentComp, htmlSource, opts, loopCtx)

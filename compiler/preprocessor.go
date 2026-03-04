@@ -63,13 +63,13 @@ func preprocessFor(src string, templatePath string) (string, error) {
 			return "", fmt.Errorf("template validation error in %s: found %d {@for} directive(s) but only %d {@endfor} directive(s).\n"+
 				"  {@for} found at line(s): %v\n"+
 				"  {@endfor} found at line(s): %v\n"+
-				"  Missing %d {@endfor} directive(s).",
+				"  Missing %d {@endfor} directive(s)",
 				templatePath, forCount, endForCount, forLines, endForLines, forCount-endForCount)
 		} else {
 			return "", fmt.Errorf("template validation error in %s: found %d {@endfor} directive(s) but only %d {@for} directive(s).\n"+
 				"  {@for} found at line(s): %v\n"+
 				"  {@endfor} found at line(s): %v\n"+
-				"  Extra %d {@endfor} directive(s) without matching {@for}.",
+				"  Extra %d {@endfor} directive(s) without matching {@for}",
 				templatePath, endForCount, forCount, forLines, endForLines, endForCount-forCount)
 		}
 	}
@@ -120,13 +120,13 @@ func preprocessConditionals(src string, templatePath string) (string, error) {
 			return "", fmt.Errorf("template validation error in %s: found %d {@if} directive(s) but only %d {@endif} directive(s).\n"+
 				"  {@if} found at line(s): %v\n"+
 				"  {@endif} found at line(s): %v\n"+
-				"  Missing %d {@endif} directive(s).",
+				"  Missing %d {@endif} directive(s)",
 				templatePath, ifCount, endifCount, ifLines, endifLines, ifCount-endifCount)
 		} else {
 			return "", fmt.Errorf("template validation error in %s: found %d {@endif} directive(s) but only %d {@if} directive(s).\n"+
 				"  {@if} found at line(s): %v\n"+
 				"  {@endif} found at line(s): %v\n"+
-				"  Extra %d {@endif} directive(s) without matching {@if}.",
+				"  Extra %d {@endif} directive(s) without matching {@if}",
 				templatePath, endifCount, ifCount, ifLines, endifLines, endifCount-ifCount)
 		}
 	}

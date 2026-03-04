@@ -15,7 +15,9 @@ func previewDiv(t *testing.T, renderer *testcomponents.TestRenderer) string {
 	root := renderer.GetCurrentVDOM()
 	if root == nil {
 		t.Fatal("GetCurrentVDOM returned nil")
+		return "" // unreachable, but satisfies staticcheck SA5011
 	}
+
 	if root.Tag != "div" {
 		t.Fatalf("Expected root tag 'div', got '%s'", root.Tag)
 	}

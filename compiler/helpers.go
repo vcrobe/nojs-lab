@@ -68,42 +68,42 @@ func estimateTextNodeLineNumber(htmlSource string, textContent string) int {
 	return 0
 }
 
-// estimateComponentTagLineNumber finds the line number of a component tag that contains specific text.
-// This is more accurate than estimateLineNumber for finding the right occurrence.
-func estimateComponentTagLineNumber(htmlSource string, n *html.Node, componentName string) int {
-	// Try to find unique characteristics of this specific component usage
-	// Look for attributes that make it unique
-	var uniqueAttr string
-	for _, attr := range n.Attr {
-		if attr.Key == "title" || strings.HasPrefix(attr.Key, "Title") {
-			uniqueAttr = attr.Val
-			break
-		}
-	}
+// // estimateComponentTagLineNumber finds the line number of a component tag that contains specific text.
+// // This is more accurate than estimateLineNumber for finding the right occurrence.
+// func estimateComponentTagLineNumber(htmlSource string, n *html.Node, componentName string) int {
+// 	// Try to find unique characteristics of this specific component usage
+// 	// Look for attributes that make it unique
+// 	var uniqueAttr string
+// 	for _, attr := range n.Attr {
+// 		if attr.Key == "title" || strings.HasPrefix(attr.Key, "Title") {
+// 			uniqueAttr = attr.Val
+// 			break
+// 		}
+// 	}
 
-	searchPattern := fmt.Sprintf("<%s", componentName)
-	if uniqueAttr != "" {
-		// Search for the tag with this specific attribute
-		lines := strings.Split(htmlSource, "\n")
-		for i, line := range lines {
-			if strings.Contains(line, searchPattern) && strings.Contains(line, uniqueAttr) {
-				return i + 1 // 1-indexed
-			}
-		}
-	}
+// 	searchPattern := fmt.Sprintf("<%s", componentName)
+// 	if uniqueAttr != "" {
+// 		// Search for the tag with this specific attribute
+// 		lines := strings.Split(htmlSource, "\n")
+// 		for i, line := range lines {
+// 			if strings.Contains(line, searchPattern) && strings.Contains(line, uniqueAttr) {
+// 				return i + 1 // 1-indexed
+// 			}
+// 		}
+// 	}
 
-	// Fallback to simple search
-	return estimateLineNumber(htmlSource, searchPattern)
-}
+// 	// Fallback to simple search
+// 	return estimateLineNumber(htmlSource, searchPattern)
+// }
 
 // getSourceLine returns the source line at the given line number (1-indexed).
-func getSourceLine(htmlSource string, lineNum int) string {
-	lines := strings.Split(htmlSource, "\n")
-	if lineNum > 0 && lineNum <= len(lines) {
-		return lines[lineNum-1]
-	}
-	return ""
-}
+// func getSourceLine(htmlSource string, lineNum int) string {
+// 	lines := strings.Split(htmlSource, "\n")
+// 	if lineNum > 0 && lineNum <= len(lines) {
+// 		return lines[lineNum-1]
+// 	}
+// 	return ""
+// }
 
 // getContextLines returns a formatted string with context lines around the error line.
 // It shows 'contextSize' lines before and after the target line.
@@ -111,10 +111,9 @@ func getContextLines(source string, lineNumber int, contextSize int) string {
 	lines := strings.Split(source, "\n")
 
 	// Calculate the range of lines to show
-	startLine := lineNumber - contextSize - 1 // -1 for 0-based indexing
-	if startLine < 0 {
-		startLine = 0
-	}
+	startLine := max(
+		// -1 for 0-based indexing
+		lineNumber-contextSize-1, 0)
 
 	endLine := lineNumber + contextSize // lineNumber is already the index we want to highlight
 	if endLine > len(lines) {
@@ -133,7 +132,7 @@ func getContextLines(source string, lineNumber int, contextSize int) string {
 			prefix = "> "
 		}
 
-		result.WriteString(fmt.Sprintf("%s%4d | %s\n", prefix, lineNum, lines[i]))
+		fmt.Fprintf(&result, "%s%4d | %s\n", prefix, lineNum, lines[i])
 	}
 
 	return result.String()
@@ -204,22 +203,22 @@ func findFirstElementChild(n *html.Node) *html.Node {
 }
 
 // childCount is a helper function to count preceding element siblings for key generation.
-func childCount(parent *html.Node, until *html.Node) int {
-	count := 0
+// func childCount(parent *html.Node, until *html.Node) int {
+// 	count := 0
 
-	if parent == nil {
-		return 0
-	}
+// 	if parent == nil {
+// 		return 0
+// 	}
 
-	for c := parent.FirstChild; c != nil; c = c.NextSibling {
-		if c == until {
-			break
-		}
+// 	for c := parent.FirstChild; c != nil; c = c.NextSibling {
+// 		if c == until {
+// 			break
+// 		}
 
-		if c.Type == html.ElementNode {
-			count++
-		}
-	}
+// 		if c.Type == html.ElementNode {
+// 			count++
+// 		}
+// 	}
 
-	return count
-}
+// 	return count
+// }

@@ -38,14 +38,10 @@ func resolveNestedFieldType(fieldPath string, comp componentInfo, componentDir s
 		fieldName := parts[i]
 
 		// Remove pointer dereference marker if present
-		if strings.HasPrefix(currentType, "*") {
-			currentType = currentType[1:]
-		}
+		currentType = strings.TrimPrefix(currentType, "*")
 
 		// Remove slice marker if present
-		if strings.HasPrefix(currentType, "[]") {
-			currentType = currentType[2:]
-		}
+		currentType = strings.TrimPrefix(currentType, "[]")
 
 		// If it's a simple type (like string, int), we can't access fields
 		if isBuiltinType(currentType) {
@@ -227,12 +223,8 @@ func getAvailableNestedFields(fieldPath string, comp componentInfo, componentDir
 	}
 
 	// Remove pointer and slice markers
-	if strings.HasPrefix(fieldType, "*") {
-		fieldType = fieldType[1:]
-	}
-	if strings.HasPrefix(fieldType, "[]") {
-		fieldType = fieldType[2:]
-	}
+	fieldType = strings.TrimPrefix(fieldType, "*")
+	fieldType = strings.TrimPrefix(fieldType, "[]")
 
 	// Extract struct name from qualified types (e.g., "context.MainLayoutCtx" -> "MainLayoutCtx")
 	structName := fieldType

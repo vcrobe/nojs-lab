@@ -52,11 +52,11 @@ type loopContext struct {
 }
 
 // textNodePosition tracks the location of an unwrapped text node in slot content.
-type textNodePosition struct {
-	lineNum     int
-	colNum      int
-	textContent string
-}
+// type textNodePosition struct {
+// 	lineNum     int
+// 	colNum      int
+// 	textContent string
+// }
 
 // Regex to find data binding expressions like {FieldName} or {user.Name}
 var dataBindingRegex = regexp.MustCompile(`\{([a-zA-Z0-9_.]+)\}`)

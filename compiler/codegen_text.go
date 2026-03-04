@@ -206,54 +206,54 @@ func generateTextExpression(text string, receiver string, currentComp componentI
 }
 
 // generateSlotTextNodeError generates a detailed error message for unwrapped text in slot content.
-func generateSlotTextNodeError(
-	componentName string,
-	templatePath string,
-	htmlSource string,
-	textNodes []textNodePosition,
-	componentTagLine int,
-) {
-	var errorMsg strings.Builder
+// func generateSlotTextNodeError(
+// 	componentName string,
+// 	templatePath string,
+// 	htmlSource string,
+// 	textNodes []textNodePosition,
+// 	componentTagLine int,
+// ) {
+// 	var errorMsg strings.Builder
 
-	// Header
-	firstPos := textNodes[0]
-	fmt.Fprintf(&errorMsg, "Compilation Error in %s:%d:%d: Slot content contains unwrapped text in component '%s'\n\n",
-		templatePath, firstPos.lineNum, firstPos.colNum, componentName)
+// 	// Header
+// 	firstPos := textNodes[0]
+// 	fmt.Fprintf(&errorMsg, "Compilation Error in %s:%d:%d: Slot content contains unwrapped text in component '%s'\n\n",
+// 		templatePath, firstPos.lineNum, firstPos.colNum, componentName)
 
-	// Show problematic line(s) with context
-	for _, pos := range textNodes {
-		if pos.lineNum == 0 {
-			continue
-		}
+// 	// Show problematic line(s) with context
+// 	for _, pos := range textNodes {
+// 		if pos.lineNum == 0 {
+// 			continue
+// 		}
 
-		line := getSourceLine(htmlSource, pos.lineNum)
-		fmt.Fprintf(&errorMsg, "%d | %s\n", pos.lineNum, line)
+// 		line := getSourceLine(htmlSource, pos.lineNum)
+// 		fmt.Fprintf(&errorMsg, "%d | %s\n", pos.lineNum, line)
 
-		// Add caret highlighting
-		trimmedText := strings.TrimSpace(pos.textContent)
-		colOffset := strings.Index(line, trimmedText)
-		if colOffset >= 0 {
-			padding := strings.Repeat(" ", len(fmt.Sprintf("%d | ", pos.lineNum))+colOffset)
-			carets := strings.Repeat("^", len(trimmedText))
-			fmt.Fprintf(&errorMsg, "%s%s\n", padding, carets)
-		}
-	}
+// 		// Add caret highlighting
+// 		trimmedText := strings.TrimSpace(pos.textContent)
+// 		colOffset := strings.Index(line, trimmedText)
+// 		if colOffset >= 0 {
+// 			padding := strings.Repeat(" ", len(fmt.Sprintf("%d | ", pos.lineNum))+colOffset)
+// 			carets := strings.Repeat("^", len(trimmedText))
+// 			fmt.Fprintf(&errorMsg, "%s%s\n", padding, carets)
+// 		}
+// 	}
 
-	// Suggestion: multi-line format
-	fmt.Fprintf(&errorMsg, "\nSlot content must be wrapped in HTML elements. Wrap the text in a tag:\n\n")
-	fmt.Fprintf(&errorMsg, "%d | <%s ...>\n", componentTagLine, componentName)
-	fmt.Fprintf(&errorMsg, "%d |   <p>Text content here</p>\n", componentTagLine+1)
-	fmt.Fprintf(&errorMsg, "%d | </%s>\n", componentTagLine+2, componentName)
+// 	// Suggestion: multi-line format
+// 	fmt.Fprintf(&errorMsg, "\nSlot content must be wrapped in HTML elements. Wrap the text in a tag:\n\n")
+// 	fmt.Fprintf(&errorMsg, "%d | <%s ...>\n", componentTagLine, componentName)
+// 	fmt.Fprintf(&errorMsg, "%d |   <p>Text content here</p>\n", componentTagLine+1)
+// 	fmt.Fprintf(&errorMsg, "%d | </%s>\n", componentTagLine+2, componentName)
 
-	// Suggestion: inline format
-	fmt.Fprintf(&errorMsg, "\nOr use <span> for inline text:\n\n")
-	fmt.Fprintf(&errorMsg, "%d | <%s ...><span>Text content</span></%s>\n",
-		componentTagLine, componentName, componentName)
+// 	// Suggestion: inline format
+// 	fmt.Fprintf(&errorMsg, "\nOr use <span> for inline text:\n\n")
+// 	fmt.Fprintf(&errorMsg, "%d | <%s ...><span>Text content</span></%s>\n",
+// 		componentTagLine, componentName, componentName)
 
-	// Print to stderr and exit
-	fmt.Fprint(os.Stderr, errorMsg.String())
-	os.Exit(1)
-}
+// 	// Print to stderr and exit
+// 	fmt.Fprint(os.Stderr, errorMsg.String())
+// 	os.Exit(1)
+// }
 
 // collectSlotChildren collects child nodes for content projection and generates VNode slice code.
 // Returns empty string if no children, otherwise returns Go code for []*vdom.VNode{...}.

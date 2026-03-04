@@ -136,19 +136,19 @@ func generateForLoopCode(n *html.Node, receiver string, componentMap map[string]
 
 	// Generate IIFE that returns a slice of VNodes
 	code.WriteString("func() []*vdom.VNode {\n")
-	code.WriteString(fmt.Sprintf("\tvar %s_nodes []*vdom.VNode\n", valueVar))
+	fmt.Fprintf(&code, "\tvar %s_nodes []*vdom.VNode\n", valueVar)
 
 	// Add development warning if enabled
 	if opts.DevMode {
 		code.WriteString("\t// Development warning for empty slice\n")
-		code.WriteString(fmt.Sprintf("\tif len(%s.%s) == 0 {\n", receiver, propDesc.Name))
-		code.WriteString(fmt.Sprintf("\t\tconsole.Warn(\"[@for] Rendering empty list for '%s' in %s. Consider using {@if} to handle empty state.\")\n",
-			propDesc.Name, currentComp.PascalName))
+		fmt.Fprintf(&code, "\tif len(%s.%s) == 0 {\n", receiver, propDesc.Name)
+		fmt.Fprintf(&code, "\t\tconsole.Warn(\"[@for] Rendering empty list for '%s' in %s. Consider using {@if} to handle empty state.\")\n",
+			propDesc.Name, currentComp.PascalName)
 		code.WriteString("\t}\n\n")
 	}
 
 	// Generate the for loop
-	code.WriteString(fmt.Sprintf("\tfor %s, %s := range %s.%s {\n", indexVar, valueVar, receiver, propDesc.Name))
+	fmt.Fprintf(&code, "\tfor %s, %s := range %s.%s {\n", indexVar, valueVar, receiver, propDesc.Name)
 
 	// Create loop context for child nodes
 	loopCtx := &loopContext{
@@ -164,9 +164,9 @@ func generateForLoopCode(n *html.Node, receiver string, componentMap map[string]
 			childCode := generateNodeCode(c, receiver, componentMap, currentComp, htmlSource, opts, loopCtx)
 			if childCode != "" {
 				childVarName := fmt.Sprintf("%s_child_%d", valueVar, childCounter)
-				code.WriteString(fmt.Sprintf("\t\t%s := %s\n", childVarName, childCode))
-				code.WriteString(fmt.Sprintf("\t\tif %s != nil {\n", childVarName))
-				code.WriteString(fmt.Sprintf("\t\t\t%s_nodes = append(%s_nodes, %s)\n", valueVar, valueVar, childVarName))
+				fmt.Fprintf(&code, "\t\t%s := %s\n", childVarName, childCode)
+				fmt.Fprintf(&code, "\t\tif %s != nil {\n", childVarName)
+				fmt.Fprintf(&code, "\t\t\t%s_nodes = append(%s_nodes, %s)\n", valueVar, valueVar, childVarName)
 				code.WriteString("\t\t}\n")
 				childCounter++
 			}
@@ -174,7 +174,7 @@ func generateForLoopCode(n *html.Node, receiver string, componentMap map[string]
 	}
 
 	code.WriteString("\t}\n")
-	code.WriteString(fmt.Sprintf("\treturn %s_nodes\n", valueVar))
+	fmt.Fprintf(&code, "\treturn %s_nodes\n", valueVar)
 	code.WriteString("}()")
 
 	return code.String()

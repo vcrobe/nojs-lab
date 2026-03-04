@@ -15,7 +15,7 @@ func validateComponentName(componentName, templatePath string) error {
 	lowerName := strings.ToLower(componentName)
 	if problematicHTMLTags[lowerName] {
 		return fmt.Errorf(
-			"Compilation Error: Component name '%s' in %s conflicts with HTML tag '<%s>'.\n"+
+			"compilation error: Component name '%s' in %s conflicts with HTML tag '<%s>'.\n"+
 				"\n"+
 				"The Go html.Parse library treats component names case-insensitively and applies HTML5 parsing rules.\n"+
 				"This causes issues like:\n"+
@@ -28,7 +28,7 @@ func validateComponentName(componentName, templatePath string) error {
 				"  - Form → DataForm or AppForm\n"+
 				"  - Button → ActionButton or CustomButton\n"+
 				"\n"+
-				"Use PascalCase names that don't match HTML tags (case-insensitive).",
+				"Use PascalCase names that don't match HTML tags (case-insensitive)",
 			componentName, templatePath, lowerName)
 	}
 	return nil
@@ -278,8 +278,8 @@ func findSimilarComponents(typedName string, availableComponents []componentInfo
 func generateMissingComponentError(tagName string, componentMap map[string]componentInfo, currentComp componentInfo, htmlSource string, templatePath string, lineNumber int) string {
 	var errorMsg strings.Builder
 
-	errorMsg.WriteString(fmt.Sprintf("Compilation Error in %s:%d:\n", templatePath, lineNumber))
-	errorMsg.WriteString(fmt.Sprintf("Component '<%s>' not found.\n\n", tagName))
+	fmt.Fprintf(&errorMsg, "Compilation Error in %s:%d:\n", templatePath, lineNumber)
+	fmt.Fprintf(&errorMsg, "Component '<%s>' not found.\n\n", tagName)
 
 	// Collect all available components
 	var allComponents []componentInfo
@@ -292,7 +292,7 @@ func generateMissingComponentError(tagName string, componentMap map[string]compo
 	if len(similar) > 0 {
 		errorMsg.WriteString("Did you mean one of these?\n")
 		for _, comp := range similar {
-			errorMsg.WriteString(fmt.Sprintf("  - <%s>\n", comp.PascalName))
+			fmt.Fprintf(&errorMsg, "  - <%s>\n", comp.PascalName)
 		}
 		errorMsg.WriteString("\n")
 	}
@@ -311,10 +311,10 @@ func generateMissingComponentError(tagName string, componentMap map[string]compo
 		count := 0
 		for _, comp := range allComponents {
 			if count >= 10 {
-				errorMsg.WriteString(fmt.Sprintf("  ... and %d more\n", len(allComponents)-10))
+				fmt.Fprintf(&errorMsg, "  ... and %d more\n", len(allComponents)-10)
 				break
 			}
-			errorMsg.WriteString(fmt.Sprintf("  - %s\n", comp.PascalName))
+			fmt.Fprintf(&errorMsg, "  - %s\n", comp.PascalName)
 			count++
 		}
 		errorMsg.WriteString("\n")
