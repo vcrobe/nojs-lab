@@ -40,10 +40,16 @@ jobs:
         working-directory: compiler
         run: go run ./cmd/nojsc -in=./testcomponents
 
-      - name: golangci-lint
+      - name: golangci-lint (AOT compiler)
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.10.1
           working-directory: compiler
           args: --timeout=1m
-          
+      
+      - name: golangci-lint (nojs framework)
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.10.1
+          working-directory: nojs
+          args: --timeout=1m
