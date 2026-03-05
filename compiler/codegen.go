@@ -66,7 +66,7 @@ func compileComponentTemplate(comp componentInfo, componentMap map[string]compon
 	if len(usedPackages) > 0 {
 		additionalImports.WriteString("\n")
 		for _, importPath := range usedPackages {
-			additionalImports.WriteString(fmt.Sprintf("\t\"%s\"\n", importPath))
+			fmt.Fprintf(&additionalImports, "\t\"%s\"\n", importPath)
 		}
 	}
 
