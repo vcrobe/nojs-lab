@@ -579,7 +579,8 @@ func patchElement(domElement js.Value, oldVNode, newVNode *VNode) {
 	}
 
 	// Update content for input/textarea elements
-	if newVNode.Tag == "input" || newVNode.Tag == "textarea" {
+	switch newVNode.Tag {
+	case "input", "textarea":
 		// Only update value if element is NOT currently focused
 		// This preserves the user's typing experience
 		isFocused := domElement.Call("matches", ":focus")
@@ -589,12 +590,12 @@ func patchElement(domElement js.Value, oldVNode, newVNode *VNode) {
 				domElement.Set("value", newVNode.Content)
 			}
 		}
-	} else if newVNode.Tag == "select" {
+	case "select":
 		// For select elements, update the selected value
 		if newVNode.Content != "" {
 			domElement.Set("value", newVNode.Content)
 		}
-	} else {
+	default:
 		if len(newVNode.Children) == 0 {
 			// No children: update text content directly.
 			// Setting textContent wipes out all child nodes, so only do this when there are none.
