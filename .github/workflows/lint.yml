@@ -49,6 +49,9 @@ jobs:
       
       - name: golangci-lint (nojs framework)
         uses: golangci/golangci-lint-action@v7
+        env:
+          GOOS: js
+          GOARCH: wasm
         with:
           version: v2.10.1
           working-directory: nojs
