@@ -1,4 +1,4 @@
-.PHONY: help wasm wasm-prod full full-prod clean serve lint docs-install docs-build docs-serve
+.PHONY: help wasm wasm-prod full full-prod clean serve lint lint-compiler lint-nojs docs-install docs-build docs-serve
 
 # Variables
 COMPILER_PATH := github.com/ForgeLogic/nojs-compiler/cmd/nojsc
@@ -43,11 +43,22 @@ lint:
 	@echo "🔍 Running golangci-lint on [compiler, nojs] modules..."
 	@go work sync
 	@go run ./compiler/cmd/nojsc -in=./compiler/testcomponents
-	@for dir in compiler nojs; do \
-		echo "🔍 Linting '$$dir...'"; \
-		(cd $$dir && $(GOLANGCI_LINT) run --timeout=1m) || exit 1; \
-	done
-	@echo "✅ Lint complete!"
+	@status=0; \
+	$(MAKE) lint-compiler || status=1; \
+	$(MAKE) lint-nojs || status=1; \
+	if [ $$status -ne 0 ]; then \
+		echo "❌ Lint completed with failures."; \
+		exit 1; \
+	fi; \
+	echo "✅ Lint complete!"
+
+lint-compiler:
+	@echo "🔍 Linting 'compiler'..."
+	@(cd compiler && $(GOLANGCI_LINT) run --timeout=1m)
+
+lint-nojs:
+	@echo "🔍 Linting 'nojs' (GOOS=js GOARCH=wasm)..."
+	@(cd nojs && GOOS=js GOARCH=wasm $(GOLANGCI_LINT) run --timeout=1m)
 
 # Install golangci-lint
 lint-install:

@@ -20,3 +20,7 @@ func Error(args ...any) {
 	console := js.Global().Get("console")
 	console.Call("error", args...)
 }
+
+func notused() {
+	// This function is intentionally left blank to prevent "imported and not used" errors
+}
